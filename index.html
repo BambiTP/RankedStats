@@ -22,7 +22,8 @@
       background-color: #f9f9fb;
       color: #333;
     }
-    /* Top bar for navigation, mode toggle and player input */
+    /* Top bar for navigation, mode toggle and player input
+       (Removed sticky properties so it scrolls normally) */
     .top-bar {
       background-color: #1f1f1f;
       padding: 10px 20px;
@@ -30,8 +31,7 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      position: sticky;
-      top: 0;
+      /* Removed: position: sticky; top: 0; */
       z-index: 100;
     }
     /* Navigation links in top bar */
@@ -144,7 +144,7 @@
       font-size: 16px;
       color: inherit;
     }
-    /* Make table headers sticky */
+    /* Sticky table headers: these will stick to the top of the page when scrolling */
     table th {
       position: sticky;
       top: 0;
