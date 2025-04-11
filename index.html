@@ -273,7 +273,8 @@
       'Miscellaneous': ['Minutes', 'Win %', 'Pups', 'Pup %', 'NDPops', 'NRTags']
     };
 
-    // Data storage for aggregations
+    // Global data storage for aggregations
+    let csvData = null;    // Will store the raw CSV data.
     let matchData = {};      // Grouped by matchId
     let teammatesStats = {}; // For "Stats With"
     let opponentsStats = {}; // For "Stats Against"
@@ -298,13 +299,17 @@
       header: true,
       skipEmptyLines: true,
       complete: res => {
-        processCSVData(res.data);
+        csvData = res.data;  // Save the original CSV data.
+        processCSVData(csvData);
       },
       error: err => console.log('Error parsing CSV: ' + err.message)
     });
 
-    // Process CSV data
+    // Process CSV data (builds matchData and aggregates stats)
     function processCSVData(data) {
+      // Reset matchData (and ensure it's not accumulating duplicates)
+      matchData = {};
+      
       // Group data by matchId
       data.forEach(row => {
         const matchId = row.matchId;
@@ -326,7 +331,7 @@
         }
       });
 
-      // Aggregate "Stats With" and "Stats Against" using case‑insensitive keys
+      // Aggregate "Stats With" and "Stats Against"
       relevantGames.forEach(({ matchId, team }) => {
         const players = matchData[matchId];
         const sameTeam = players.filter(p => p.team === team);
@@ -387,7 +392,7 @@
         });
       });
 
-      // Aggregate "All Stats" across matches, grouping by normalized player name
+      // Aggregate "All Stats" across matches
       Object.entries(matchData).forEach(([matchId, players]) => {
         let teams = {};
         players.forEach(p => {
@@ -685,13 +690,15 @@
           .forEach(id => {
             document.getElementById(id).innerHTML = '';
           });
-        // Reset aggregations and reprocess CSV data based on stored matchData.
+        // Reset all aggregation objects
+        matchData = {};
         teammatesStats = {};
         opponentsStats = {};
+        allStats = {};
         mapStats = {};
         playerTeamMap = {};
-        // Flatten matchData (already loaded) into an array and re-run processCSVData.
-        processCSVData(Object.values(matchData).flat());
+        // Re-run processCSVData using the original CSV data (stored in csvData)
+        processCSVData(csvData);
       }
     });
   </script>
