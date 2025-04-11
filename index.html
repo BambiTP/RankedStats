@@ -267,9 +267,9 @@
     const statCategories = {
       'Offense': ['Minutes', 'Grabs', 'Captures', 'Hold', 'Flaccids', 'Good Handoffs', 'Captures off Handoffs'],
       'Defense': ['Minutes', 'Tags', 'Returns', 'Quick Returns', 'Returns in Base', 'Prevent', 'Hold Against', 'KF'],
-      'Offense Rates': ['Caps/Min', 'Hold/Min', 'Grabs/Min', 'Score %', 'Hold/Grab', 'Chain %', 'Flaccid %', 'Captures off Handoffs'],
-      'Defense Rates': ['Tags/Min', 'Returns/Min', 'Pops/Min', 'HoldAgainst/Min', 'K/D', 'Prevent/Return', 'Prevent/HoldAgainst', 'QR %'],
-      'Miscellaneous': ['Win %', 'Pups', 'Pup %', 'NDPops', 'NRTags']
+      'Offense Rates': ['Minutes', 'Caps/Min', 'Hold/Min', 'Grabs/Min', 'Score %', 'Hold/Grab', 'Chain %', 'Flaccid %', 'Captures off Handoffs'],
+      'Defense Rates': ['Minutes', 'Tags/Min', 'Returns/Min', 'Pops/Min', 'HoldAgainst/Min', 'K/D', 'Prevent/Return', 'Prevent/HoldAgainst', 'QR %'],
+      'Miscellaneous': ['Minutes', 'Win %', 'Pups', 'Pup %', 'NDPops', 'NRTags']
     };
 
     // Data storage for the three aggregations
@@ -423,6 +423,7 @@
     }
 
     // Compute derived stats and summary for each player's aggregated stats.
+    // The Summary now includes Wins, Losses, and Win %.
     function computeDerivedAndSummary(dataset) {
       Object.values(dataset).forEach(stats => {
         stats.Derived = {};
@@ -432,7 +433,10 @@
           stats.Derived[label] = denominator ? numerator / denominator : 0;
         });
         stats.Summary = {
-          Mins: stats.Minutes,
+          Minutes: stats.Minutes,
+          Wins: stats.Wins,
+          Losses: stats.Losses,
+          "Win %": stats.Games ? (stats.Wins / stats.Games * 100) : 0,
           "+/-": stats.CapsFor - stats.CapsAgainst,
           Tags: stats.Totals["Tags"] || 0,
           Pops: stats.Totals["Pops"] || 0,
@@ -453,7 +457,7 @@
       const outputWith = document.getElementById('outputWith');
       tabsWith.innerHTML = '';
       outputWith.innerHTML = '';
-      const summaryHeaders = ["Player", "Mins", "+/-", "Tags", "Pops", "Grabs", "Drops", "Hold", "Caps", "Prevent", "Returns"];
+      const summaryHeaders = [ "Mins", "Wins", "Losses", "Win %", "+/-", "Tags", "Pops", "Grabs", "Drops", "Hold", "Caps", "Prevent", "Returns"];
       createSubTab(tabsWith, outputWith, "Summary", summaryHeaders, teammatesStats, true);
       Object.entries(statCategories).forEach(([label, stats]) => {
         createSubTab(tabsWith, outputWith, label, stats, teammatesStats);
@@ -476,7 +480,7 @@
       const outputAll = document.getElementById('outputAll');
       tabsAll.innerHTML = '';
       outputAll.innerHTML = '';
-      const summaryHeaders = ["Player", "Mins", "+/-", "Tags", "Pops", "Grabs", "Drops", "Hold", "Caps", "Prevent", "Returns"];
+      const summaryHeaders = ["Player", "Mins", "Wins", "Losses", "Win %", "+/-", "Tags", "Pops", "Grabs", "Drops", "Hold", "Caps", "Prevent", "Returns"];
       createSubTab(tabsAll, outputAll, "Summary", summaryHeaders, allStats, true);
       Object.entries(statCategories).forEach(([label, stats]) => {
         createSubTab(tabsAll, outputAll, label, stats, allStats);
