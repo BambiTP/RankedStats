@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Team Stats Aggregator</title>
+  <!-- Load PapaParse for CSV parsing -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+  <style>
+    /* Base Styles (Dark Mode as default) */
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 30px;
+      box-sizing: border-box;
+      background-color: #121212;
+      color: #e0e0e0;
+      line-height: 1.6;
+      font-size: 18px;
+      transition: background-color 0.3s ease, color 0.3s ease;
+    }
+    /* Light mode overrides */
+    body.light-mode {
+      background-color: #f9f9fb;
+      color: #333;
+    }
+    /* Top bar for navigation and mode toggle */
+    .top-bar {
+      background-color: #1f1f1f;
+      padding: 10px 20px;
+      color: #e0e0e0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      margin: -30px -30px 30px; /* extend to full width */
+    }
+    /* Nav links in top bar */
+    .nav {
+      display: flex;
+      gap: 20px;
+    }
+    .nav a {
+      color: inherit;
+      text-decoration: none;
+      padding: 8px 16px;
+      border-radius: 4px;
+      transition: background-color 0.2s ease;
+      cursor: pointer;
+      font-size: 18px;
+    }
+    .nav a:hover {
+      background-color: #333;
+    }
+    .nav a.active {
+      background-color: #1e90ff;
+      font-weight: bold;
+      color: #fff;
+    }
+    /* Mode toggle button */
+    .toggle-button {
+      background-color: #1e90ff;
+      border: none;
+      border-radius: 4px;
+      padding: 8px 12px;
+      color: #fff;
+      cursor: pointer;
+      font-size: 16px;
+      transition: background-color 0.3s ease;
+    }
+    .toggle-button:hover {
+      background-color: #0056b3;
+    }
+    /* Header */
+    h1 {
+      text-align: center;
+      margin-bottom: 30px;
+      color: inherit;
+      font-size: 2rem;
+    }
+    /* Input Group Styling */
+    .input-group {
+      margin-bottom: 15px;
+      max-width: 500px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: 500;
+      color: inherit;
+    }
+    input[type="text"] {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #444;
+      border-radius: 4px;
+      background-color: #1f1f1f;
+      color: #e0e0e0;
+      font-size: 16px;
+    }
+    body.light-mode input[type="text"] {
+      background-color: #fff;
+      color: #333;
+      border: 1px solid #ccc;
+    }
+    .message {
+      text-align: center;
+      margin: 10px 0;
+      color: #ccc;
+    }
+    /* Sub-tabs for categories */
+    .sub-tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: center;
+      margin-bottom: 10px;
+    }
+    .tab-button {
+      padding: 10px 15px;
+      background: #1f1f1f;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-weight: 500;
+      transition: background 0.3s ease;
+      color: inherit;
+      font-size: 16px;
+    }
+    .tab-button:hover {
+      background: #333;
+    }
+    .tab-button.active {
+      background: #1e90ff;
+      color: #fff;
+      font-weight: 700;
+    }
+    .tab-content {
+      display: none;
+      background: #1f1f1f;
+      border: 1px solid #444;
+      border-radius: 5px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+      padding: 20px;
+    }
+    .tab-content.active {
+      display: block;
+    }
+    /* Slimmer Table styling */
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin-top: 10px;
+      background-color: #1f1f1f;
+    }
+    body.light-mode table {
+      background-color: #fff;
+    }
+    th, td {
+      border: 1px solid #444;
+      padding: 6px; /* Reduced padding for a slimmer look */
+      text-align: center;
+      font-size: 16px;
+      color: inherit;
+    }
+    th {
+      background-color: #2b2b2b;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s ease;
+    }
+    body.light-mode th {
+      background-color: #f1f1f1;
+    }
+    th:hover {
+      background-color: #333;
+    }
+    tr:nth-child(even) {
+      background-color: #2a2a2a;
+    }
+    body.light-mode tr:nth-child(even) {
+      background-color: #fafafa;
+    }
+    tr:hover {
+      background-color: #333;
+    }
+    body.light-mode tr:hover {
+      background-color: #e0e0e0;
+    }
+    /* Outer container for stats sections */
+    .outer-tabs {
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <!-- Top Bar with Navigation and Mode Toggle -->
+  <div class="top-bar">
+    <div class="nav">
+      <a id="statsWithNav" class="active">Stats With</a>
+      <a id="statsAgainstNav">Stats Against</a>
+      <a id="statsAllNav">All Stats</a>
+    </div>
+    <button id="modeToggle" class="toggle-button">Light Mode</button>
+  </div>
+
+  <h1>Team Stats Aggregator</h1>
+  <!-- The player filter applies only to the first two tabs -->
+  <div class="input-group">
+    <label for="playerName">Player Name Filter (for Stats With/Against):</label>
+    <input type="text" id="playerName" placeholder="Enter player name (e.g., jig)" />
+  </div>
+  <div id="message" class="message"></div>
+
+  <!-- Stats With Container (only games where the filter player appears) -->
+  <div id="statsWithContainer" class="outer-tabs">
+    <div id="tabsWith" class="sub-tabs"></div>
+    <div id="outputWith"></div>
+  </div>
+
+  <!-- Stats Against Container (only games where the filter player appears) -->
+  <div id="statsAgainstContainer" class="outer-tabs" style="display: none;">
+    <div id="tabsAgainst" class="sub-tabs"></div>
+    <div id="outputAgainst"></div>
+  </div>
+
+  <!-- All Stats Container (all games, aggregated for each player) -->
+  <div id="statsAllContainer" class="outer-tabs" style="display: none;">
+    <div id="tabsAll" class="sub-tabs"></div>
+    <div id="outputAll"></div>
+  </div>
+
+  <script>
+    // Define raw and derived stats
+    const rawStats = [
+      'Captures', 'Grabs', 'Pops', 'Tags', 'Drops', 'Returns', 'Flaccids',
+      'Good Handoffs', 'Quick Returns', 'Returns in Base',
+      'Pups', 'Pups Available', 'Minutes', 'Hold', 'Prevent', 'Hold Against',
+      'KF', 'NDPops', 'NRTags', 'Captures off Handoffs'
+    ];
+
+    const derivedStats = {
+      'Win %': ['Wins', 'Games'],
+      'Caps/Min': ['Captures', 'Minutes'],
+      'Hold/Min': ['Hold', 'Minutes'],
+      'Grabs/Min': ['Grabs', 'Minutes'],
+      'Tags/Min': ['Tags', 'Minutes'],
+      'Returns/Min': ['Returns', 'Minutes'],
+      'Pops/Min': ['Pops', 'Minutes'],
+      'HoldAgainst/Min': ['Hold Against', 'Minutes'],
+      'Score %': ['Captures', 'Grabs'],
+      'Hold/Grab': ['Hold', 'Grabs'],
+      'Chain %': ['Good Handoffs', 'Grabs'],
+      'Flaccid %': ['Flaccids', 'Grabs'],
+      'Captures Off Handoffs': ['Captures off Handoffs', 'Good Handoffs'],
+      'K/D': ['Tags', 'Pops'],
+      'Prevent/Return': ['Prevent', 'Returns'],
+      'Prevent/HoldAgainst': ['Prevent', 'Hold Against'],
+      'QR %': ['Quick Returns', 'Returns'],
+      'Pup %': ['Pups', 'Pups Available']
+    };
+
+    // Category definitions for sub-tabs (excluding Summary)
+    const statCategories = {
+      'Offense': ['Minutes', 'Grabs', 'Captures', 'Hold', 'Flaccids', 'Good Handoffs', 'Captures off Handoffs'],
+      'Defense': ['Minutes', 'Tags', 'Returns', 'Quick Returns', 'Returns in Base', 'Prevent', 'Hold Against', 'KF'],
+      'Offense Rates': ['Caps/Min', 'Hold/Min', 'Grabs/Min', 'Score %', 'Hold/Grab', 'Chain %', 'Flaccid %', 'Captures off Handoffs'],
+      'Defense Rates': ['Tags/Min', 'Returns/Min', 'Pops/Min', 'HoldAgainst/Min', 'K/D', 'Prevent/Return', 'Prevent/HoldAgainst', 'QR %'],
+      'Miscellaneous': ['Win %', 'Pups', 'Pup %', 'NDPops', 'NRTags']
+    };
+
+    // Data storage for the three aggregations
+    let matchData = {};      // Grouped by matchId (used for filtered aggregation)
+    let teammatesStats = {}; // Aggregated for "Stats With" (only matches where filter player appears)
+    let opponentsStats = {}; // Aggregated for "Stats Against" (only matches where filter player appears)
+    let allStats = {};       // Aggregated for "All Stats" (all matches, regardless of filter)
+    let playerTeamMap = {};  // Map matchId to the filtered player's team (for Stats With/Against)
+
+    // Load the CSV automatically from combinedStats.csv
+    Papa.parse("combinedStats.csv", {
+      download: true,
+      header: true,
+      skipEmptyLines: true,
+      complete: res => {
+        processCSVData(res.data);
+      },
+      error: err => displayMessage('Error parsing CSV: ' + err.message, true)
+    });
+
+    // Display a message
+    function displayMessage(msg, isError) {
+      const el = document.getElementById('message');
+      el.textContent = msg;
+      el.style.color = isError ? 'red' : '#ccc';
+    }
+
+    // Process CSV data (runs once after download)
+    function processCSVData(data) {
+      // Build matchData (group rows by matchId)
+      data.forEach(row => {
+        const matchId = row.matchId;
+        const player = (row.Player || '').trim();
+        const team = row.Team;
+        if (!matchId || !player || !team) return;
+        if (!matchData[matchId]) { matchData[matchId] = []; }
+        // Normalize the row
+        matchData[matchId].push({ ...row, player, team });
+      });
+
+      // Process for filtered aggregation (Stats With/Against)
+      // Only include matches where the filtered player appears
+      const playerFilter = document.getElementById('playerName').value.trim().toLowerCase();
+      const relevantGames = [];
+      Object.entries(matchData).forEach(([matchId, players]) => {
+        const playerEntry = players.find(p => p.player.toLowerCase() === playerFilter);
+        if (playerEntry) {
+          playerTeamMap[matchId] = playerEntry.team;
+          relevantGames.push({ matchId, team: playerEntry.team });
+        }
+      });
+      // For each relevant match, aggregate stats for teammates and opponents
+      relevantGames.forEach(({ matchId, team }) => {
+        const players = matchData[matchId];
+        const sameTeam = players.filter(p => p.team === team);
+        const oppTeam = players.filter(p => p.team !== team);
+        // Compute team totals (assumes 2-team match)
+        const capsFor = sameTeam.reduce((a, p) => a + parseInt(p.Captures || 0, 10), 0);
+        const capsAgainst = oppTeam.reduce((a, p) => a + parseInt(p.Captures || 0, 10), 0);
+        if (capsFor === capsAgainst) return; // Skip tie matches
+
+        const result = capsFor > capsAgainst ? 'win' : 'loss';
+
+        sameTeam.forEach(p => {
+          const name = p.player;
+          if (!teammatesStats[name]) {
+            teammatesStats[name] = {
+              Games: 0, Wins: 0, Losses: 0, CapsFor: 0, CapsAgainst: 0, Minutes: 0,
+              Totals: Object.fromEntries(rawStats.map(stat => [stat, 0]))
+            };
+          }
+          const stats = teammatesStats[name];
+          stats.Games++;
+          stats[result === 'win' ? 'Wins' : 'Losses']++;
+          stats.CapsFor += capsFor;
+          stats.CapsAgainst += capsAgainst;
+          rawStats.forEach(stat => {
+            stats.Totals[stat] += parseFloat(p[stat] || 0);
+          });
+          stats.Minutes += parseFloat(p.Minutes || 0);
+        });
+
+        oppTeam.forEach(p => {
+          const name = p.player;
+          if (!opponentsStats[name]) {
+            opponentsStats[name] = {
+              Games: 0, Wins: 0, Losses: 0, CapsFor: 0, CapsAgainst: 0, Minutes: 0,
+              Totals: Object.fromEntries(rawStats.map(stat => [stat, 0]))
+            };
+          }
+          const stats = opponentsStats[name];
+          stats.Games++;
+          // For opponents, a win for them is when filtered player's team loses
+          stats[result === 'loss' ? 'Wins' : 'Losses']++;
+          stats.CapsFor += capsAgainst;
+          stats.CapsAgainst += capsFor;
+          rawStats.forEach(stat => {
+            stats.Totals[stat] += parseFloat(p[stat] || 0);
+          });
+          stats.Minutes += parseFloat(p.Minutes || 0);
+        });
+      });
+
+      // Process for "All Stats" aggregation (across every match)
+      Object.entries(matchData).forEach(([matchId, players]) => {
+        // Compute team totals for the match (assumes two teams)
+        let teams = {};
+        players.forEach(p => {
+          teams[p.team] = (teams[p.team] || 0) + parseInt(p.Captures || 0, 10);
+        });
+        const teamNames = Object.keys(teams);
+        if (teamNames.length !== 2 || teams[teamNames[0]] === teams[teamNames[1]]) return; // skip tie matches or non-2-team matches
+        const winningTeam = teams[teamNames[0]] > teams[teamNames[1]] ? teamNames[0] : teamNames[1];
+        // For each player in the match, add stats to allStats
+        players.forEach(p => {
+          const name = p.player;
+          if (!allStats[name]) {
+            allStats[name] = {
+              Games: 0, Wins: 0, Losses: 0, CapsFor: 0, CapsAgainst: 0, Minutes: 0,
+              Totals: Object.fromEntries(rawStats.map(stat => [stat, 0]))
+            };
+          }
+          const stats = allStats[name];
+          stats.Games++;
+          if (p.team === winningTeam) {
+            stats.Wins++;
+          } else {
+            stats.Losses++;
+          }
+          // Determine team totals for player's team and opposing team
+          const teamCapsFor = teams[p.team];
+          const teamCapsAgainst = teams[p.team === teamNames[0] ? teamNames[1] : teamNames[0]];
+          stats.CapsFor += teamCapsFor;
+          stats.CapsAgainst += teamCapsAgainst;
+          rawStats.forEach(stat => {
+            stats.Totals[stat] += parseFloat(p[stat] || 0);
+          });
+          stats.Minutes += parseFloat(p.Minutes || 0);
+        });
+      });
+
+      // Compute derived and summary stats for each dataset
+      computeDerivedAndSummary(teammatesStats);
+      computeDerivedAndSummary(opponentsStats);
+      computeDerivedAndSummary(allStats);
+
+      // Render sub-tabs for each top-level container
+      renderSubTabs();
+      renderAllSubTabs();
+      displayMessage('Stats aggregated.');
+    }
+
+    // Compute derived stats and summary for each player's aggregated stats.
+    function computeDerivedAndSummary(dataset) {
+      Object.values(dataset).forEach(stats => {
+        stats.Derived = {};
+        Object.entries(derivedStats).forEach(([label, [num, den]]) => {
+          const numerator = stats[num] ?? stats.Totals[num] ?? 0;
+          const denominator = stats[den] ?? stats.Totals[den] ?? 0;
+          stats.Derived[label] = denominator ? numerator / denominator : 0;
+        });
+        stats.Summary = {
+          Mins: stats.Minutes,
+          "+/-": stats.CapsFor - stats.CapsAgainst,
+          Tags: stats.Totals["Tags"] || 0,
+          Pops: stats.Totals["Pops"] || 0,
+          Grabs: stats.Totals["Grabs"] || 0,
+          Drops: stats.Totals["Drops"] || 0,
+          Hold: stats.Totals["Hold"] || 0,
+          Caps: stats.Totals["Captures"] || 0,
+          Prevent: stats.Totals["Prevent"] || 0,
+          Returns: stats.Totals["Returns"] || 0
+        };
+      });
+    }
+
+    // Render sub-tabs for "Stats With" and "Stats Against"
+    function renderSubTabs() {
+      // For "Stats With"
+      const tabsWith = document.getElementById('tabsWith');
+      const outputWith = document.getElementById('outputWith');
+      tabsWith.innerHTML = '';
+      outputWith.innerHTML = '';
+      const summaryHeaders = ["Player", "Mins", "+/-", "Tags", "Pops", "Grabs", "Drops", "Hold", "Caps", "Prevent", "Returns"];
+      createSubTab(tabsWith, outputWith, "Summary", summaryHeaders, teammatesStats, true);
+      Object.entries(statCategories).forEach(([label, stats]) => {
+        createSubTab(tabsWith, outputWith, label, stats, teammatesStats);
+      });
+
+      // For "Stats Against"
+      const tabsAgainst = document.getElementById('tabsAgainst');
+      const outputAgainst = document.getElementById('outputAgainst');
+      tabsAgainst.innerHTML = '';
+      outputAgainst.innerHTML = '';
+      createSubTab(tabsAgainst, outputAgainst, "Summary", summaryHeaders, opponentsStats, true);
+      Object.entries(statCategories).forEach(([label, stats]) => {
+        createSubTab(tabsAgainst, outputAgainst, label, stats, opponentsStats);
+      });
+    }
+
+    // Render sub-tabs for "All Stats"
+    function renderAllSubTabs() {
+      const tabsAll = document.getElementById('tabsAll');
+      const outputAll = document.getElementById('outputAll');
+      tabsAll.innerHTML = '';
+      outputAll.innerHTML = '';
+      const summaryHeaders = ["Player", "Mins", "+/-", "Tags", "Pops", "Grabs", "Drops", "Hold", "Caps", "Prevent", "Returns"];
+      createSubTab(tabsAll, outputAll, "Summary", summaryHeaders, allStats, true);
+      Object.entries(statCategories).forEach(([label, stats]) => {
+        createSubTab(tabsAll, outputAll, label, stats, allStats);
+      });
+    }
+
+    // Create a sub-tab for a given category.
+    // If isSummary is true, use the Summary object from each player's stats.
+    function createSubTab(tabContainer, outputContainer, label, stats, dataset, isSummary) {
+      const button = document.createElement('button');
+      button.className = 'tab-button';
+      button.textContent = label;
+      const content = document.createElement('div');
+      content.className = 'tab-content';
+
+      let html = '<table><thead><tr>';
+      let headers = ['Player'].concat(stats);
+      headers.forEach((h, i) => {
+        html += `<th data-col-index="${i}">${h}</th>`;
+      });
+      html += '</tr></thead><tbody>';
+      Object.entries(dataset).forEach(([player, playerStats]) => {
+        html += '<tr>';
+        html += `<td>${player}</td>`;
+        if (isSummary) {
+          const summary = playerStats.Summary;
+          headers.slice(1).forEach(col => {
+            const val = summary[col] !== undefined ? summary[col] : 0;
+            html += `<td data-sort="${val}">${Number(val).toFixed(2)}</td>`;
+          });
+        } else {
+          stats.forEach(stat => {
+            const value = stat in playerStats.Totals ? playerStats.Totals[stat]
+                         : stat in playerStats ? playerStats[stat]
+                         : stat in playerStats.Derived ? playerStats.Derived[stat]
+                         : 0;
+            const num = typeof value === 'number' ? value : parseFloat(value) || 0;
+            html += `<td data-sort="${num}">${Number(num).toFixed(2)}</td>`;
+          });
+        }
+        html += '</tr>';
+      });
+      html += '</tbody></table>';
+      content.innerHTML = html;
+
+      tabContainer.appendChild(button);
+      outputContainer.appendChild(content);
+      setupCustomTableSort(content.querySelector('table'));
+
+      button.addEventListener('click', () => {
+        Array.from(tabContainer.children).forEach(btn => btn.classList.remove('active'));
+        Array.from(outputContainer.children).forEach(cont => cont.classList.remove('active'));
+        button.classList.add('active');
+        content.classList.add('active');
+      });
+      if (!tabContainer.querySelector('.tab-button.active')) {
+        button.classList.add('active');
+        content.classList.add('active');
+      }
+    }
+
+    // Sorting functionality for table headers.
+    function setupCustomTableSort(table) {
+      const headers = table.querySelectorAll("th");
+      headers.forEach(header => {
+        header.style.cursor = "pointer";
+        header.addEventListener("click", function() {
+          const colIndex = parseInt(header.getAttribute("data-col-index"), 10);
+          let sortOrder = header.getAttribute("data-sort-order") || "asc";
+          sortOrder = sortOrder === "asc" ? "desc" : "asc";
+          header.setAttribute("data-sort-order", sortOrder);
+          const tbody = table.querySelector("tbody");
+          const rows = Array.from(tbody.querySelectorAll("tr"));
+          rows.sort((a, b) => {
+            const cellA = a.querySelectorAll("td")[colIndex];
+            const cellB = b.querySelectorAll("td")[colIndex];
+            const valA = parseFloat(cellA.getAttribute("data-sort"));
+            const valB = parseFloat(cellB.getAttribute("data-sort"));
+            return sortOrder === "asc" ? valA - valB : valB - valA;
+          });
+          tbody.innerHTML = "";
+          rows.forEach(row => tbody.appendChild(row));
+        });
+      });
+    }
+
+    // Top-level Navigation event handlers
+    document.getElementById('statsWithNav').addEventListener('click', () => {
+      document.getElementById('statsWithNav').classList.add('active');
+      document.getElementById('statsAgainstNav').classList.remove('active');
+      document.getElementById('statsAllNav').classList.remove('active');
+      document.getElementById('statsWithContainer').style.display = '';
+      document.getElementById('statsAgainstContainer').style.display = 'none';
+      document.getElementById('statsAllContainer').style.display = 'none';
+    });
+    document.getElementById('statsAgainstNav').addEventListener('click', () => {
+      document.getElementById('statsAgainstNav').classList.add('active');
+      document.getElementById('statsWithNav').classList.remove('active');
+      document.getElementById('statsAllNav').classList.remove('active');
+      document.getElementById('statsWithContainer').style.display = 'none';
+      document.getElementById('statsAgainstContainer').style.display = '';
+      document.getElementById('statsAllContainer').style.display = 'none';
+    });
+    document.getElementById('statsAllNav').addEventListener('click', () => {
+      document.getElementById('statsAllNav').classList.add('active');
+      document.getElementById('statsWithNav').classList.remove('active');
+      document.getElementById('statsAgainstNav').classList.remove('active');
+      document.getElementById('statsWithContainer').style.display = 'none';
+      document.getElementById('statsAgainstContainer').style.display = 'none';
+      document.getElementById('statsAllContainer').style.display = '';
+    });
+
+    // Dark/Light Mode Toggle
+    document.getElementById('modeToggle').addEventListener('click', () => {
+      document.body.classList.toggle('light-mode');
+      document.getElementById('modeToggle').textContent = document.body.classList.contains('light-mode')
+        ? 'Dark Mode'
+        : 'Light Mode';
+    });
+
+    // Optionally, re-run aggregation when the player filter changes (for Stats With/Against)
+    document.getElementById('playerName').addEventListener('keyup', (e) => {
+      if (e.key === "Enter") {
+        // Reset filtered aggregations and re-process only the relevant games.
+        teammatesStats = {};
+        opponentsStats = {};
+        playerTeamMap = {};
+        const playerFilter = document.getElementById('playerName').value.trim().toLowerCase();
+        const relevantGames = [];
+        Object.entries(matchData).forEach(([matchId, players]) => {
+          const playerEntry = players.find(p => p.player.toLowerCase() === playerFilter);
+          if (playerEntry) {
+            playerTeamMap[matchId] = playerEntry.team;
+            relevantGames.push({ matchId, team: playerEntry.team });
+          }
+        });
+        relevantGames.forEach(({ matchId, team }) => {
+          const players = matchData[matchId];
+          const sameTeam = players.filter(p => p.team === team);
+          const oppTeam = players.filter(p => p.team !== team);
+          const capsFor = sameTeam.reduce((a, p) => a + parseInt(p.Captures || 0, 10), 0);
+          const capsAgainst = oppTeam.reduce((a, p) => a + parseInt(p.Captures || 0, 10), 0);
+          if (capsFor === capsAgainst) return;
+          const result = capsFor > capsAgainst ? 'win' : 'loss';
+          sameTeam.forEach(p => {
+            const name = p.player;
+            if (!teammatesStats[name]) {
+              teammatesStats[name] = {
+                Games: 0, Wins: 0, Losses: 0, CapsFor: 0, CapsAgainst: 0, Minutes: 0,
+                Totals: Object.fromEntries(rawStats.map(stat => [stat, 0]))
+              };
+            }
+            const stats = teammatesStats[name];
+            stats.Games++;
+            stats[result === 'win' ? 'Wins' : 'Losses']++;
+            stats.CapsFor += capsFor;
+            stats.CapsAgainst += capsAgainst;
+            rawStats.forEach(stat => {
+              stats.Totals[stat] += parseFloat(p[stat] || 0);
+            });
+            stats.Minutes += parseFloat(p.Minutes || 0);
+          });
+          oppTeam.forEach(p => {
+            const name = p.player;
+            if (!opponentsStats[name]) {
+              opponentsStats[name] = {
+                Games: 0, Wins: 0, Losses: 0, CapsFor: 0, CapsAgainst: 0, Minutes: 0,
+                Totals: Object.fromEntries(rawStats.map(stat => [stat, 0]))
+              };
+            }
+            const stats = opponentsStats[name];
+            stats.Games++;
+            stats[result === 'loss' ? 'Wins' : 'Losses']++;
+            stats.CapsFor += capsAgainst;
+            stats.CapsAgainst += capsFor;
+            rawStats.forEach(stat => {
+              stats.Totals[stat] += parseFloat(p[stat] || 0);
+            });
+            stats.Minutes += parseFloat(p.Minutes || 0);
+          });
+        });
+        computeDerivedAndSummary(teammatesStats);
+        computeDerivedAndSummary(opponentsStats);
+        renderSubTabs();
+      }
+    });
+  </script>
+</body>
+</html>
