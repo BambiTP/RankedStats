@@ -345,7 +345,7 @@
           if (!teammatesStats[name]) {
             teammatesStats[name] = {
               Games: 0, Wins: 0, Losses: 0, CapsFor: 0, CapsAgainst: 0, Minutes: 0,
-              Totals: Object.fromEntries(rawStats.map(stat => [stat, 0]))
+              Totals: Object.fromEntries(rawStats.Map(stat => [stat, 0]))
             };
           }
           const stats = teammatesStats[name];
@@ -364,7 +364,7 @@
           if (!opponentsStats[name]) {
             opponentsStats[name] = {
               Games: 0, Wins: 0, Losses: 0, CapsFor: 0, CapsAgainst: 0, Minutes: 0,
-              Totals: Object.fromEntries(rawStats.map(stat => [stat, 0]))
+              Totals: Object.fromEntries(rawStats.Map(stat => [stat, 0]))
             };
           }
           const stats = opponentsStats[name];
@@ -395,7 +395,7 @@
           if (!allStats[name]) {
             allStats[name] = {
               Games: 0, Wins: 0, Losses: 0, CapsFor: 0, CapsAgainst: 0, Minutes: 0,
-              Totals: Object.fromEntries(rawStats.map(stat => [stat, 0]))
+              Totals: Object.fromEntries(rawStats.Map(stat => [stat, 0]))
             };
           }
           const stats = allStats[name];
@@ -470,7 +470,7 @@
         const playerRow = players.find(p => p.player.toLowerCase() === playerFilter);
         if (!playerRow) return; // Skip if the player isn't in this match
         // Use the map value from the player's row
-        const mapName = playerRow.map;
+        const mapName = playerRow.Map;
         if (!mapName) return; // Skip if no map info
         // Compute team totals (assumes two teams)
         const sameTeam = players.filter(p => p.team === playerRow.team);
@@ -484,7 +484,7 @@
         if (!mapStats[mapName]) {
           mapStats[mapName] = {
             Games: 0, Wins: 0, Losses: 0, CapsFor: 0, CapsAgainst: 0, Minutes: 0,
-            Totals: Object.fromEntries(rawStats.map(stat => [stat, 0]))
+            Totals: Object.fromEntries(rawStats.Map(stat => [stat, 0]))
           };
         }
         const stats = mapStats[mapName];
@@ -756,7 +756,7 @@
             if (!teammatesStats[name]) {
               teammatesStats[name] = {
                 Games: 0, Wins: 0, Losses: 0, CapsFor: 0, CapsAgainst: 0, Minutes: 0,
-                Totals: Object.fromEntries(rawStats.map(stat => [stat, 0]))
+                Totals: Object.fromEntries(rawStats.Map(stat => [stat, 0]))
               };
             }
             const stats = teammatesStats[name];
@@ -774,7 +774,7 @@
             if (!opponentsStats[name]) {
               opponentsStats[name] = {
                 Games: 0, Wins: 0, Losses: 0, CapsFor: 0, CapsAgainst: 0, Minutes: 0,
-                Totals: Object.fromEntries(rawStats.map(stat => [stat, 0]))
+                Totals: Object.fromEntries(rawStats.Map(stat => [stat, 0]))
               };
             }
             const stats = opponentsStats[name];
