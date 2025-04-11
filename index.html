@@ -10,7 +10,7 @@
     body {
       font-family: Arial, sans-serif;
       margin: 0;
-      padding: 30px;
+      padding: 0;
       box-sizing: border-box;
       background-color: #121212;
       color: #e0e0e0;
@@ -23,23 +23,23 @@
       background-color: #f9f9fb;
       color: #333;
     }
-    /* Top bar for navigation and mode toggle */
+    /* Top bar for navigation, mode toggle and player input */
     .top-bar {
       background-color: #1f1f1f;
       padding: 10px 20px;
       color: #e0e0e0;
       display: flex;
-      justify-content: space-between;
       align-items: center;
+      justify-content: space-between;
       position: sticky;
       top: 0;
       z-index: 100;
-      margin: -30px -30px 30px; /* extend to full width */
     }
-    /* Nav links in top bar */
+    /* Navigation links in top bar */
     .nav {
       display: flex;
       gap: 20px;
+      align-items: center;
     }
     .nav a {
       color: inherit;
@@ -68,50 +68,40 @@
       cursor: pointer;
       font-size: 16px;
       transition: background-color 0.3s ease;
+      margin-left: 10px;
     }
     .toggle-button:hover {
       background-color: #0056b3;
     }
-    /* Header */
-    h1 {
-      text-align: center;
-      margin-bottom: 30px;
-      color: inherit;
-      font-size: 2rem;
+    /* Player Input styling inside top bar */
+    .player-input {
+      margin-left: 20px;
     }
-    /* Input Group Styling */
-    .input-group {
-      margin-bottom: 15px;
-      max-width: 500px;
-      margin-left: auto;
-      margin-right: auto;
-    }
-    label {
-      display: block;
-      margin-bottom: 5px;
-      font-weight: 500;
-      color: inherit;
-    }
-    input[type="text"] {
-      width: 100%;
-      padding: 10px;
+    .player-input input[type="text"] {
+      padding: 6px 8px;
       border: 1px solid #444;
       border-radius: 4px;
       background-color: #1f1f1f;
       color: #e0e0e0;
       font-size: 16px;
     }
-    body.light-mode input[type="text"] {
+    body.light-mode .player-input input[type="text"] {
       background-color: #fff;
       color: #333;
       border: 1px solid #ccc;
     }
-    .message {
+    /* Header */
+    h1 {
       text-align: center;
-      margin: 10px 0;
-      color: #ccc;
+      margin: 20px 0;
+      color: inherit;
+      font-size: 2rem;
     }
-    /* Sub-tabs for categories */
+    /* Outer container for stats sections */
+    .outer-tabs {
+      padding: 20px;
+    }
+    /* Sub-tabs for each category */
     .sub-tabs {
       display: flex;
       flex-wrap: wrap;
@@ -145,11 +135,12 @@
       border-radius: 5px;
       box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
       padding: 20px;
+      margin-top: 10px;
     }
     .tab-content.active {
       display: block;
     }
-    /* Slimmer Table styling */
+    /* Table styling */
     table {
       border-collapse: collapse;
       width: 100%;
@@ -190,54 +181,57 @@
     body.light-mode tr:hover {
       background-color: #e0e0e0;
     }
-    /* Outer container for stats sections */
-    .outer-tabs {
-      margin-top: 20px;
+    /* Light mode additional styles */
+    body.light-mode .tab-button {
+      background: #f1f1f1;
+      color: #333;
+    }
+    body.light-mode .tab-content {
+      background-color: #fff;
+      color: #333;
+      border: 1px solid #ccc;
     }
   </style>
 </head>
 <body>
-  <!-- Top Bar with Navigation and Mode Toggle -->
+  <!-- Top Bar with Navigation, Player Input and Mode Toggle -->
   <div class="top-bar">
     <div class="nav">
-      <a id="statsWithNav" class="active">Stats With</a>
-      <a id="statsAgainstNav">Stats Against</a>
-      <a id="statsAllNav">All Stats</a>
+      <!-- Reordered navigation links -->
+      <a id="statsAllNav" class="active">All Stats</a>
       <a id="statsMapNav">Map Stats</a>
+      <a id="statsWithNav">Stats With</a>
+      <a id="statsAgainstNav">Stats Against</a>
+      <!-- Player input now inside nav -->
+      <div class="player-input">
+        <label for="playerName" style="display: none;">Player:</label>
+        <input type="text" id="playerName" placeholder="Player name (e.g., jig)" />
+      </div>
     </div>
     <button id="modeToggle" class="toggle-button">Light Mode</button>
   </div>
 
   <h1>Team Stats Aggregator</h1>
-  <!-- The player filter applies only to the first two tabs and map stats -->
-  <div class="input-group">
-    <label for="playerName">Player Name Filter (for Stats With/Against/Map Stats):</label>
-    <input type="text" id="playerName" placeholder="Enter player name (e.g., jig)" />
-  </div>
-  <div id="message" class="message"></div>
 
-  <!-- Stats With Container -->
-  <div id="statsWithContainer" class="outer-tabs">
-    <div id="tabsWith" class="sub-tabs"></div>
-    <div id="outputWith"></div>
-  </div>
-
-  <!-- Stats Against Container -->
-  <div id="statsAgainstContainer" class="outer-tabs" style="display: none;">
-    <div id="tabsAgainst" class="sub-tabs"></div>
-    <div id="outputAgainst"></div>
-  </div>
-
-  <!-- All Stats Container -->
-  <div id="statsAllContainer" class="outer-tabs" style="display: none;">
+  <!-- Stats Containers -->
+  <div id="statsAllContainer" class="outer-tabs">
     <div id="tabsAll" class="sub-tabs"></div>
     <div id="outputAll"></div>
   </div>
 
-  <!-- Map Stats Container -->
   <div id="statsMapContainer" class="outer-tabs" style="display: none;">
     <div id="tabsMap" class="sub-tabs"></div>
     <div id="outputMap"></div>
+  </div>
+
+  <div id="statsWithContainer" class="outer-tabs" style="display: none;">
+    <div id="tabsWith" class="sub-tabs"></div>
+    <div id="outputWith"></div>
+  </div>
+
+  <div id="statsAgainstContainer" class="outer-tabs" style="display: none;">
+    <div id="tabsAgainst" class="sub-tabs"></div>
+    <div id="outputAgainst"></div>
   </div>
 
   <script>
@@ -279,15 +273,26 @@
       'Miscellaneous': ['Minutes', 'Win %', 'Pups', 'Pup %', 'NDPops', 'NRTags']
     };
 
-    // Data storage for the aggregations and map stats
-    let matchData = {};      // Grouped by matchId (used for filtered aggregation)
-    let teammatesStats = {}; // Aggregated for "Stats With" (only matches where filter player appears)
-    let opponentsStats = {}; // Aggregated for "Stats Against" (only matches where filter player appears)
-    let allStats = {};       // Aggregated for "All Stats" (all matches, regardless of filter)
-    let mapStats = {};       // Aggregated for Map Stats (only matches where filtered player appears)
-    let playerTeamMap = {};  // Map matchId to the filtered player's team (for Stats With/Against)
+    // Data storage for aggregations
+    let matchData = {};      // Grouped by matchId
+    let teammatesStats = {}; // For "Stats With"
+    let opponentsStats = {}; // For "Stats Against"
+    let allStats = {};       // For "All Stats"
+    let mapStats = {};       // For "Map Stats" (aggregated by mapName)
+    let playerTeamMap = {};  // Map of matchId to filtered player's team
 
-    // Load the CSV automatically from combinedStats.csv
+    // Load saved player name and mode from localStorage
+    const savedPlayer = localStorage.getItem('playerName');
+    if (savedPlayer) {
+      document.getElementById('playerName').value = savedPlayer;
+    }
+    const savedMode = localStorage.getItem('darkMode');
+    if (savedMode === 'false') {
+      document.body.classList.add('light-mode');
+      document.getElementById('modeToggle').textContent = 'Dark Mode';
+    }
+
+    // Load CSV automatically from combinedStats.csv
     Papa.parse("combinedStats.csv", {
       download: true,
       header: true,
@@ -295,30 +300,22 @@
       complete: res => {
         processCSVData(res.data);
       },
-      error: err => displayMessage('Error parsing CSV: ' + err.message, true)
+      error: err => console.log('Error parsing CSV: ' + err.message)
     });
 
-    // Display a message
-    function displayMessage(msg, isError) {
-      const el = document.getElementById('message');
-      el.textContent = msg;
-      el.style.color = isError ? 'red' : '#ccc';
-    }
-
-    // Process CSV data (runs once after download)
+    // Process CSV data
     function processCSVData(data) {
-      // Build matchData (group rows by matchId)
+      // Group data by matchId
       data.forEach(row => {
         const matchId = row.matchId;
         const player = (row.Player || '').trim();
         const team = row.Team;
         if (!matchId || !player || !team) return;
         if (!matchData[matchId]) { matchData[matchId] = []; }
-        // Normalize the row
         matchData[matchId].push({ ...row, player, team });
       });
 
-      // Process for filtered aggregation (Stats With/Against)
+      // Filter aggregation for matches including the filtered player
       const playerFilter = document.getElementById('playerName').value.trim().toLowerCase();
       const relevantGames = [];
       Object.entries(matchData).forEach(([matchId, players]) => {
@@ -328,27 +325,32 @@
           relevantGames.push({ matchId, team: playerEntry.team });
         }
       });
-      // For each relevant match, aggregate stats for teammates and opponents
+
+      // Aggregate "Stats With" and "Stats Against" using case‑insensitive keys
       relevantGames.forEach(({ matchId, team }) => {
         const players = matchData[matchId];
         const sameTeam = players.filter(p => p.team === team);
         const oppTeam = players.filter(p => p.team !== team);
-        // Compute team totals (assumes 2-team match)
         const capsFor = sameTeam.reduce((a, p) => a + parseInt(p.Captures || 0, 10), 0);
         const capsAgainst = oppTeam.reduce((a, p) => a + parseInt(p.Captures || 0, 10), 0);
-        if (capsFor === capsAgainst) return; // Skip tie matches
-
+        if (capsFor === capsAgainst) return;
         const result = capsFor > capsAgainst ? 'win' : 'loss';
 
         sameTeam.forEach(p => {
-          const name = p.player;
-          if (!teammatesStats[name]) {
-            teammatesStats[name] = {
+          const norm = p.player.trim().toLowerCase();
+          const minutes = parseFloat(p.Minutes) || 0;
+          if (!teammatesStats[norm]) {
+            teammatesStats[norm] = {
+              canonicalName: p.player,
+              maxIndividualMinutes: minutes,
               Games: 0, Wins: 0, Losses: 0, CapsFor: 0, CapsAgainst: 0, Minutes: 0,
               Totals: Object.fromEntries(rawStats.map(stat => [stat, 0]))
             };
+          } else if (minutes > teammatesStats[norm].maxIndividualMinutes) {
+            teammatesStats[norm].canonicalName = p.player;
+            teammatesStats[norm].maxIndividualMinutes = minutes;
           }
-          const stats = teammatesStats[name];
+          const stats = teammatesStats[norm];
           stats.Games++;
           stats[result === 'win' ? 'Wins' : 'Losses']++;
           stats.CapsFor += capsFor;
@@ -356,18 +358,24 @@
           rawStats.forEach(stat => {
             stats.Totals[stat] += parseFloat(p[stat] || 0);
           });
-          stats.Minutes += parseFloat(p.Minutes || 0);
+          stats.Minutes += minutes;
         });
 
         oppTeam.forEach(p => {
-          const name = p.player;
-          if (!opponentsStats[name]) {
-            opponentsStats[name] = {
+          const norm = p.player.trim().toLowerCase();
+          const minutes = parseFloat(p.Minutes) || 0;
+          if (!opponentsStats[norm]) {
+            opponentsStats[norm] = {
+              canonicalName: p.player,
+              maxIndividualMinutes: minutes,
               Games: 0, Wins: 0, Losses: 0, CapsFor: 0, CapsAgainst: 0, Minutes: 0,
               Totals: Object.fromEntries(rawStats.map(stat => [stat, 0]))
             };
+          } else if (minutes > opponentsStats[norm].maxIndividualMinutes) {
+            opponentsStats[norm].canonicalName = p.player;
+            opponentsStats[norm].maxIndividualMinutes = minutes;
           }
-          const stats = opponentsStats[name];
+          const stats = opponentsStats[norm];
           stats.Games++;
           stats[result === 'loss' ? 'Wins' : 'Losses']++;
           stats.CapsFor += capsAgainst;
@@ -375,13 +383,12 @@
           rawStats.forEach(stat => {
             stats.Totals[stat] += parseFloat(p[stat] || 0);
           });
-          stats.Minutes += parseFloat(p.Minutes || 0);
+          stats.Minutes += minutes;
         });
       });
 
-      // Process for "All Stats" aggregation (across every match)
+      // Aggregate "All Stats" across matches, grouping by normalized player name
       Object.entries(matchData).forEach(([matchId, players]) => {
-        // Compute team totals for the match (assumes two teams)
         let teams = {};
         players.forEach(p => {
           teams[p.team] = (teams[p.team] || 0) + parseInt(p.Captures || 0, 10);
@@ -389,22 +396,23 @@
         const teamNames = Object.keys(teams);
         if (teamNames.length !== 2 || teams[teamNames[0]] === teams[teamNames[1]]) return;
         const winningTeam = teams[teamNames[0]] > teams[teamNames[1]] ? teamNames[0] : teamNames[1];
-        // For each player in the match, add stats to allStats
         players.forEach(p => {
-          const name = p.player;
-          if (!allStats[name]) {
-            allStats[name] = {
+          const norm = p.player.trim().toLowerCase();
+          const minutes = parseFloat(p.Minutes) || 0;
+          if (!allStats[norm]) {
+            allStats[norm] = {
+              canonicalName: p.player,
+              maxIndividualMinutes: minutes,
               Games: 0, Wins: 0, Losses: 0, CapsFor: 0, CapsAgainst: 0, Minutes: 0,
               Totals: Object.fromEntries(rawStats.map(stat => [stat, 0]))
             };
+          } else if (minutes > allStats[norm].maxIndividualMinutes) {
+            allStats[norm].canonicalName = p.player;
+            allStats[norm].maxIndividualMinutes = minutes;
           }
-          const stats = allStats[name];
+          const stats = allStats[norm];
           stats.Games++;
-          if (p.team === winningTeam) {
-            stats.Wins++;
-          } else {
-            stats.Losses++;
-          }
+          if (p.team === winningTeam) { stats.Wins++; } else { stats.Losses++; }
           const teamCapsFor = teams[p.team];
           const teamCapsAgainst = teams[p.team === teamNames[0] ? teamNames[1] : teamNames[0]];
           stats.CapsFor += teamCapsFor;
@@ -412,27 +420,29 @@
           rawStats.forEach(stat => {
             stats.Totals[stat] += parseFloat(p[stat] || 0);
           });
-          stats.Minutes += parseFloat(p.Minutes || 0);
+          stats.Minutes += minutes;
         });
       });
 
-      // Process for "Map Stats" aggregation (filtered player's individual stats by map)
+      // Aggregate Map Stats for the filtered player (using "mapName" column)
       computeMapStats();
 
-      // Compute derived and summary stats for each dataset
+      // Compute derived and summary stats for each aggregation
       computeDerivedAndSummary(teammatesStats);
       computeDerivedAndSummary(opponentsStats);
       computeDerivedAndSummary(allStats);
-      // Derived stats for mapStats computed within computeMapStats()
+      // Map stats already computed in computeMapStats()
 
-      // Render sub-tabs for each top-level container
-      renderSubTabs();
+      // Render sub-tabs for each container
       renderAllSubTabs();
-      renderMapStats();
-      displayMessage('Stats aggregated.');
+      renderMapSubTabs();
+      renderSubTabs(teammatesStats, 'tabsWith', 'outputWith');
+      renderSubTabs(opponentsStats, 'tabsAgainst', 'outputAgainst');
+
+      console.log('Stats aggregated.');
     }
 
-    // Compute derived stats and summary for each player's aggregated stats.
+    // Compute derived and summary stats for each dataset.
     function computeDerivedAndSummary(dataset) {
       Object.values(dataset).forEach(stats => {
         stats.Derived = {};
@@ -459,28 +469,21 @@
       });
     }
 
-    // Compute Map Stats for the filtered player's individual performance,
-    // aggregated by the 'mapName' column.
+    // Compute Map Stats for the filtered player's matches (grouped by "mapName")
     function computeMapStats() {
-      mapStats = {}; // Reset map stats
+      mapStats = {}; // Reset
       const playerFilter = document.getElementById('playerName').value.trim().toLowerCase();
-      // Iterate over each match
       Object.entries(matchData).forEach(([matchId, players]) => {
-        // Find the filtered player's row in the match
         const playerRow = players.find(p => p.player.toLowerCase() === playerFilter);
-        if (!playerRow) return; // Skip if the player isn't in this match
-        // Use the map value from the player's row (from the "mapName" column)
+        if (!playerRow) return;
         const mapName = playerRow.mapName;
-        if (!mapName) return; // Skip if no map info
-        // Compute team totals (assumes two teams)
+        if (!mapName) return;
         const sameTeam = players.filter(p => p.team === playerRow.team);
         const oppTeam = players.filter(p => p.team !== playerRow.team);
         const capsFor = sameTeam.reduce((a, p) => a + parseInt(p.Captures || 0, 10), 0);
         const capsAgainst = oppTeam.reduce((a, p) => a + parseInt(p.Captures || 0, 10), 0);
-        if (capsFor === capsAgainst) return; // Skip tie matches
+        if (capsFor === capsAgainst) return;
         const result = capsFor > capsAgainst ? 'win' : 'loss';
-
-        // Initialize the map entry if it doesn't exist
         if (!mapStats[mapName]) {
           mapStats[mapName] = {
             Games: 0, Wins: 0, Losses: 0, CapsFor: 0, CapsAgainst: 0, Minutes: 0,
@@ -489,13 +492,7 @@
         }
         const stats = mapStats[mapName];
         stats.Games++;
-        if (result === 'win') {
-          stats.Wins++;
-        } else {
-          stats.Losses++;
-        }
-        // For map stats we aggregate the filtered player's individual stats,
-        // and add the team totals from the match.
+        if (result === 'win') { stats.Wins++; } else { stats.Losses++; }
         stats.CapsFor += capsFor;
         stats.CapsAgainst += capsAgainst;
         rawStats.forEach(stat => {
@@ -503,128 +500,44 @@
         });
         stats.Minutes += parseFloat(playerRow.Minutes || 0);
       });
-
-      // Compute derived and summary stats for the map stats
       computeDerivedAndSummary(mapStats);
     }
 
-    // Render sub-tabs for "Stats With" and "Stats Against"
-    function renderSubTabs() {
-      // For "Stats With"
-      const tabsWith = document.getElementById('tabsWith');
-      const outputWith = document.getElementById('outputWith');
-      tabsWith.innerHTML = '';
-      outputWith.innerHTML = '';
-      const summaryHeaders = [ "Minutes", "Wins", "Losses", "Win %", "+/-", "Tags", "Pops", "Grabs", "Drops", "Hold", "Caps", "Prevent", "Returns"];
-      createSubTab(tabsWith, outputWith, "Summary", summaryHeaders, teammatesStats, true);
-      Object.entries(statCategories).forEach(([label, stats]) => {
-        createSubTab(tabsWith, outputWith, label, stats, teammatesStats);
-      });
-
-      // For "Stats Against"
-      const tabsAgainst = document.getElementById('tabsAgainst');
-      const outputAgainst = document.getElementById('outputAgainst');
-      tabsAgainst.innerHTML = '';
-      outputAgainst.innerHTML = '';
-      createSubTab(tabsAgainst, outputAgainst, "Summary", summaryHeaders, opponentsStats, true);
-      Object.entries(statCategories).forEach(([label, stats]) => {
-        createSubTab(tabsAgainst, outputAgainst, label, stats, opponentsStats);
-      });
-    }
-
-    // Render sub-tabs for "All Stats"
-    function renderAllSubTabs() {
-      const tabsAll = document.getElementById('tabsAll');
-      const outputAll = document.getElementById('outputAll');
-      tabsAll.innerHTML = '';
-      outputAll.innerHTML = '';
-      const summaryHeaders = [ "Minutes", "Wins", "Losses", "Win %", "+/-", "Tags", "Pops", "Grabs", "Drops", "Hold", "Caps", "Prevent", "Returns"];
-      createSubTab(tabsAll, outputAll, "Summary", summaryHeaders, allStats, true);
-      Object.entries(statCategories).forEach(([label, stats]) => {
-        createSubTab(tabsAll, outputAll, label, stats, allStats);
-      });
-    }
-
-    // Render sub-tab for "Map Stats"
-    function renderMapStats() {
-      const tabsMap = document.getElementById('tabsMap');
-      const outputMap = document.getElementById('outputMap');
-      tabsMap.innerHTML = '';
-      outputMap.innerHTML = '';
-      // For map stats, create one tab that displays summary for each map.
-      const button = document.createElement('button');
-      button.className = 'tab-button';
-      button.textContent = 'Map Stats';
-      const content = document.createElement('div');
-      content.className = 'tab-content';
-      
-      // Create the table header: add 'Map' as first column.
-      let html = '<table><thead><tr>';
-      const headers = ['Map', "Minutes", "Wins", "Losses", "Win %", "+/-", "Tags", "Pops", "Grabs", "Drops", "Hold", "Caps", "Prevent", "Returns"];
-      headers.forEach((h, i) => {
-        html += `<th data-col-index="${i}">${h}</th>`;
-      });
-      html += '</tr></thead><tbody>';
-      // Create a row for each map (key in mapStats)
-      Object.entries(mapStats).forEach(([map, stats]) => {
-        html += '<tr>';
-        html += `<td>${map}</td>`;
-        const summary = stats.Summary;
-        headers.slice(1).forEach(col => {
-          const val = summary[col] !== undefined ? summary[col] : 0;
-          html += `<td data-sort="${val}">${Number(val).toFixed(2)}</td>`;
-        });
-        html += '</tr>';
-      });
-      html += '</tbody></table>';
-      content.innerHTML = html;
-
-      tabsMap.appendChild(button);
-      outputMap.appendChild(content);
-      setupCustomTableSort(content.querySelector('table'));
-
-      button.addEventListener('click', () => {
-        Array.from(tabsMap.children).forEach(btn => btn.classList.remove('active'));
-        Array.from(outputMap.children).forEach(cont => cont.classList.remove('active'));
-        button.classList.add('active');
-        content.classList.add('active');
-      });
-      if (!tabsMap.querySelector('.tab-button.active')) {
-        button.classList.add('active');
-        content.classList.add('active');
-      }
-    }
-
-    // Create a sub-tab for a given category.
-    // If isSummary is true, use the Summary object from each player's stats.
-    function createSubTab(tabContainer, outputContainer, label, stats, dataset, isSummary) {
+    // Generic function to create sub-tabs (for players or maps)
+    // rowHeader defaults to "Player"; for Map Stats set it to "Map"
+    function createSubTab(tabContainer, outputContainer, label, statsCols, dataset, isSummary, rowHeader = "Player") {
       const button = document.createElement('button');
       button.className = 'tab-button';
       button.textContent = label;
       const content = document.createElement('div');
       content.className = 'tab-content';
-
       let html = '<table><thead><tr>';
-      let headers = ['Player'].concat(stats);
+      let headers = [rowHeader].concat(statsCols);
       headers.forEach((h, i) => {
         html += `<th data-col-index="${i}">${h}</th>`;
       });
       html += '</tr></thead><tbody>';
-      Object.entries(dataset).forEach(([player, playerStats]) => {
+      Object.entries(dataset).forEach(([norm, data]) => {
+        // Use the stored canonicalName if available.
+        const displayName = data.canonicalName || norm;
         html += '<tr>';
-        html += `<td>${player}</td>`;
+        html += `<td>${displayName}</td>`;
         if (isSummary) {
-          const summary = playerStats.Summary;
+          const summary = data.Summary;
           headers.slice(1).forEach(col => {
             const val = summary[col] !== undefined ? summary[col] : 0;
             html += `<td data-sort="${val}">${Number(val).toFixed(2)}</td>`;
           });
         } else {
-          stats.forEach(stat => {
-            const value = stat in playerStats.Totals ? playerStats.Totals[stat]
-                         : stat in playerStats ? playerStats[stat]
-                         : stat in playerStats.Derived ? playerStats.Derived[stat]
-                         : 0;
+          statsCols.forEach(col => {
+            let value = 0;
+            if (col in data.Totals) {
+              value = data.Totals[col];
+            } else if (col in data) {
+              value = data[col];
+            } else if (data.Derived && col in data.Derived) {
+              value = data.Derived[col];
+            }
             const num = typeof value === 'number' ? value : parseFloat(value) || 0;
             html += `<td data-sort="${num}">${Number(num).toFixed(2)}</td>`;
           });
@@ -633,11 +546,9 @@
       });
       html += '</tbody></table>';
       content.innerHTML = html;
-
       tabContainer.appendChild(button);
       outputContainer.appendChild(content);
       setupCustomTableSort(content.querySelector('table'));
-
       button.addEventListener('click', () => {
         Array.from(tabContainer.children).forEach(btn => btn.classList.remove('active'));
         Array.from(outputContainer.children).forEach(cont => cont.classList.remove('active'));
@@ -648,6 +559,45 @@
         button.classList.add('active');
         content.classList.add('active');
       }
+    }
+
+    // Render sub-tabs for "All Stats"
+    function renderAllSubTabs() {
+      const tabsAll = document.getElementById('tabsAll');
+      const outputAll = document.getElementById('outputAll');
+      tabsAll.innerHTML = '';
+      outputAll.innerHTML = '';
+      const summaryHeaders = ["Minutes", "Wins", "Losses", "Win %", "+/-", "Tags", "Pops", "Grabs", "Drops", "Hold", "Caps", "Prevent", "Returns"];
+      createSubTab(tabsAll, outputAll, "Summary", summaryHeaders, allStats, true);
+      Object.entries(statCategories).forEach(([label, stats]) => {
+        createSubTab(tabsAll, outputAll, label, stats, allStats, false);
+      });
+    }
+
+    // Render sub-tabs for Map Stats (with "Map" as row header)
+    function renderMapSubTabs() {
+      const tabsMap = document.getElementById('tabsMap');
+      const outputMap = document.getElementById('outputMap');
+      tabsMap.innerHTML = '';
+      outputMap.innerHTML = '';
+      const summaryHeaders = ["Minutes", "Wins", "Losses", "Win %", "+/-", "Tags", "Pops", "Grabs", "Drops", "Hold", "Caps", "Prevent", "Returns"];
+      createSubTab(tabsMap, outputMap, "Summary", summaryHeaders, mapStats, true, "Map");
+      Object.entries(statCategories).forEach(([label, stats]) => {
+        createSubTab(tabsMap, outputMap, label, stats, mapStats, false, "Map");
+      });
+    }
+
+    // Render sub-tabs for Stats With and Stats Against
+    function renderSubTabs(dataset, tabsId, outputId) {
+      const tabsContainer = document.getElementById(tabsId);
+      const outputContainer = document.getElementById(outputId);
+      tabsContainer.innerHTML = '';
+      outputContainer.innerHTML = '';
+      const summaryHeaders = ["Minutes", "Wins", "Losses", "Win %", "+/-", "Tags", "Pops", "Grabs", "Drops", "Hold", "Caps", "Prevent", "Returns"];
+      createSubTab(tabsContainer, outputContainer, "Summary", summaryHeaders, dataset, true);
+      Object.entries(statCategories).forEach(([label, stats]) => {
+        createSubTab(tabsContainer, outputContainer, label, stats, dataset, false);
+      });
     }
 
     // Sorting functionality for table headers.
@@ -676,125 +626,67 @@
     }
 
     // Top-level Navigation event handlers
-    document.getElementById('statsWithNav').addEventListener('click', () => {
-      document.getElementById('statsWithNav').classList.add('active');
-      document.getElementById('statsAgainstNav').classList.remove('active');
-      document.getElementById('statsAllNav').classList.remove('active');
-      document.getElementById('statsMapNav').classList.remove('active');
-      document.getElementById('statsWithContainer').style.display = '';
-      document.getElementById('statsAgainstContainer').style.display = 'none';
-      document.getElementById('statsAllContainer').style.display = 'none';
-      document.getElementById('statsMapContainer').style.display = 'none';
-    });
-    document.getElementById('statsAgainstNav').addEventListener('click', () => {
-      document.getElementById('statsAgainstNav').classList.add('active');
-      document.getElementById('statsWithNav').classList.remove('active');
-      document.getElementById('statsAllNav').classList.remove('active');
-      document.getElementById('statsMapNav').classList.remove('active');
-      document.getElementById('statsWithContainer').style.display = 'none';
-      document.getElementById('statsAgainstContainer').style.display = '';
-      document.getElementById('statsAllContainer').style.display = 'none';
-      document.getElementById('statsMapContainer').style.display = 'none';
-    });
     document.getElementById('statsAllNav').addEventListener('click', () => {
       document.getElementById('statsAllNav').classList.add('active');
+      document.getElementById('statsMapNav').classList.remove('active');
       document.getElementById('statsWithNav').classList.remove('active');
       document.getElementById('statsAgainstNav').classList.remove('active');
-      document.getElementById('statsMapNav').classList.remove('active');
-      document.getElementById('statsWithContainer').style.display = 'none';
-      document.getElementById('statsAgainstContainer').style.display = 'none';
       document.getElementById('statsAllContainer').style.display = '';
       document.getElementById('statsMapContainer').style.display = 'none';
+      document.getElementById('statsWithContainer').style.display = 'none';
+      document.getElementById('statsAgainstContainer').style.display = 'none';
     });
     document.getElementById('statsMapNav').addEventListener('click', () => {
       document.getElementById('statsMapNav').classList.add('active');
+      document.getElementById('statsAllNav').classList.remove('active');
       document.getElementById('statsWithNav').classList.remove('active');
       document.getElementById('statsAgainstNav').classList.remove('active');
-      document.getElementById('statsAllNav').classList.remove('active');
-      document.getElementById('statsWithContainer').style.display = 'none';
-      document.getElementById('statsAgainstContainer').style.display = 'none';
       document.getElementById('statsAllContainer').style.display = 'none';
       document.getElementById('statsMapContainer').style.display = '';
+      document.getElementById('statsWithContainer').style.display = 'none';
+      document.getElementById('statsAgainstContainer').style.display = 'none';
+    });
+    document.getElementById('statsWithNav').addEventListener('click', () => {
+      document.getElementById('statsWithNav').classList.add('active');
+      document.getElementById('statsAllNav').classList.remove('active');
+      document.getElementById('statsMapNav').classList.remove('active');
+      document.getElementById('statsAgainstNav').classList.remove('active');
+      document.getElementById('statsAllContainer').style.display = 'none';
+      document.getElementById('statsMapContainer').style.display = 'none';
+      document.getElementById('statsWithContainer').style.display = '';
+      document.getElementById('statsAgainstContainer').style.display = 'none';
+    });
+    document.getElementById('statsAgainstNav').addEventListener('click', () => {
+      document.getElementById('statsAgainstNav').classList.add('active');
+      document.getElementById('statsAllNav').classList.remove('active');
+      document.getElementById('statsMapNav').classList.remove('active');
+      document.getElementById('statsWithNav').classList.remove('active');
+      document.getElementById('statsAllContainer').style.display = 'none';
+      document.getElementById('statsMapContainer').style.display = 'none';
+      document.getElementById('statsWithContainer').style.display = 'none';
+      document.getElementById('statsAgainstContainer').style.display = '';
     });
 
-    // Dark/Light Mode Toggle
+    // Dark/Light Mode Toggle with persistence
     document.getElementById('modeToggle').addEventListener('click', () => {
       document.body.classList.toggle('light-mode');
-      document.getElementById('modeToggle').textContent = document.body.classList.contains('light-mode')
-        ? 'Dark Mode'
-        : 'Light Mode';
+      const isLight = document.body.classList.contains('light-mode');
+      document.getElementById('modeToggle').textContent = isLight ? 'Dark Mode' : 'Light Mode';
+      localStorage.setItem('darkMode', !isLight);
     });
 
-    // Re-run aggregation when the player filter changes (for Stats With/Against/Map Stats)
+    // Save player input to localStorage and re-run aggregation when "Enter" is pressed
     document.getElementById('playerName').addEventListener('keyup', (e) => {
       if (e.key === "Enter") {
-        // Reset filtered aggregations and re-process only the relevant games.
+        const val = document.getElementById('playerName').value.trim();
+        localStorage.setItem('playerName', val);
+        // Reset aggregations and reprocess CSV data based on stored matchData
         teammatesStats = {};
         opponentsStats = {};
         mapStats = {};
         playerTeamMap = {};
-        const playerFilter = document.getElementById('playerName').value.trim().toLowerCase();
-        const relevantGames = [];
-        Object.entries(matchData).forEach(([matchId, players]) => {
-          const playerEntry = players.find(p => p.player.toLowerCase() === playerFilter);
-          if (playerEntry) {
-            playerTeamMap[matchId] = playerEntry.team;
-            relevantGames.push({ matchId, team: playerEntry.team });
-          }
-        });
-        relevantGames.forEach(({ matchId, team }) => {
-          const players = matchData[matchId];
-          const sameTeam = players.filter(p => p.team === team);
-          const oppTeam = players.filter(p => p.team !== team);
-          const capsFor = sameTeam.reduce((a, p) => a + parseInt(p.Captures || 0, 10), 0);
-          const capsAgainst = oppTeam.reduce((a, p) => a + parseInt(p.Captures || 0, 10), 0);
-          if (capsFor === capsAgainst) return;
-          const result = capsFor > capsAgainst ? 'win' : 'loss';
-          sameTeam.forEach(p => {
-            const name = p.player;
-            if (!teammatesStats[name]) {
-              teammatesStats[name] = {
-                Games: 0, Wins: 0, Losses: 0, CapsFor: 0, CapsAgainst: 0, Minutes: 0,
-                Totals: Object.fromEntries(rawStats.map(stat => [stat, 0]))
-              };
-            }
-            const stats = teammatesStats[name];
-            stats.Games++;
-            stats[result === 'win' ? 'Wins' : 'Losses']++;
-            stats.CapsFor += capsFor;
-            stats.CapsAgainst += capsAgainst;
-            rawStats.forEach(stat => {
-              stats.Totals[stat] += parseFloat(p[stat] || 0);
-            });
-            stats.Minutes += parseFloat(p.Minutes || 0);
-          });
-          oppTeam.forEach(p => {
-            const name = p.player;
-            if (!opponentsStats[name]) {
-              opponentsStats[name] = {
-                Games: 0, Wins: 0, Losses: 0, CapsFor: 0, CapsAgainst: 0, Minutes: 0,
-                Totals: Object.fromEntries(rawStats.map(stat => [stat, 0]))
-              };
-            }
-            const stats = opponentsStats[name];
-            stats.Games++;
-            stats[result === 'loss' ? 'Wins' : 'Losses']++;
-            stats.CapsFor += capsAgainst;
-            stats.CapsAgainst += capsFor;
-            rawStats.forEach(stat => {
-              stats.Totals[stat] += parseFloat(p[stat] || 0);
-            });
-            stats.Minutes += parseFloat(p.Minutes || 0);
-          });
-        });
-        // Recompute map stats for the filtered player's matches
-        computeMapStats();
-        computeDerivedAndSummary(teammatesStats);
-        computeDerivedAndSummary(opponentsStats);
-        computeDerivedAndSummary(allStats);
-        renderSubTabs();
-        renderAllSubTabs();
-        renderMapStats();
+        // Flatten matchData (already loaded) into an array and re-run processCSVData.
+        processCSVData(Object.values(matchData).flat());
       }
     });
   </script>
