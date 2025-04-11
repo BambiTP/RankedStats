@@ -457,7 +457,8 @@
       const outputWith = document.getElementById('outputWith');
       tabsWith.innerHTML = '';
       outputWith.innerHTML = '';
-      const summaryHeaders = [ "Mins", "Wins", "Losses", "Win %", "+/-", "Tags", "Pops", "Grabs", "Drops", "Hold", "Caps", "Prevent", "Returns"];
+      // Summary headers do not include "Player" because createSubTab adds it automatically.
+      const summaryHeaders = [ "Minutes", "Wins", "Losses", "Win %", "+/-", "Tags", "Pops", "Grabs", "Drops", "Hold", "Caps", "Prevent", "Returns"];
       createSubTab(tabsWith, outputWith, "Summary", summaryHeaders, teammatesStats, true);
       Object.entries(statCategories).forEach(([label, stats]) => {
         createSubTab(tabsWith, outputWith, label, stats, teammatesStats);
@@ -480,7 +481,7 @@
       const outputAll = document.getElementById('outputAll');
       tabsAll.innerHTML = '';
       outputAll.innerHTML = '';
-      const summaryHeaders = ["Player", "Mins", "Wins", "Losses", "Win %", "+/-", "Tags", "Pops", "Grabs", "Drops", "Hold", "Caps", "Prevent", "Returns"];
+      const summaryHeaders = [ "Minutes", "Wins", "Losses", "Win %", "+/-", "Tags", "Pops", "Grabs", "Drops", "Hold", "Caps", "Prevent", "Returns"];
       createSubTab(tabsAll, outputAll, "Summary", summaryHeaders, allStats, true);
       Object.entries(statCategories).forEach(([label, stats]) => {
         createSubTab(tabsAll, outputAll, label, stats, allStats);
@@ -497,6 +498,7 @@
       content.className = 'tab-content';
 
       let html = '<table><thead><tr>';
+      // Always prepend "Player" column
       let headers = ['Player'].concat(stats);
       headers.forEach((h, i) => {
         html += `<th data-col-index="${i}">${h}</th>`;
@@ -509,7 +511,7 @@
           const summary = playerStats.Summary;
           headers.slice(1).forEach(col => {
             const val = summary[col] !== undefined ? summary[col] : 0;
-            html += `<td data-sort="${val}">${Number(val).toFixed(2)}</td>`;
+            html += `<td data-col-index="0" data-sort="${val}">${formatNumber(val)}</td>`;
           });
         } else {
           stats.forEach(stat => {
@@ -517,8 +519,7 @@
                          : stat in playerStats ? playerStats[stat]
                          : stat in playerStats.Derived ? playerStats.Derived[stat]
                          : 0;
-            const num = typeof value === 'number' ? value : parseFloat(value) || 0;
-            html += `<td data-sort="${num}">${Number(num).toFixed(2)}</td>`;
+            html += `<td data-col-index="0" data-sort="${value}">${formatNumber(value)}</td>`;
           });
         }
         html += '</tr>';
@@ -539,6 +540,18 @@
       if (!tabContainer.querySelector('.tab-button.active')) {
         button.classList.add('active');
         content.classList.add('active');
+      }
+    }
+
+    // Helper function to format numbers:
+    // If the number is an integer, display without decimals; otherwise, with 2 decimals.
+    function formatNumber(val) {
+      const num = Number(val);
+      if (isNaN(num)) return val;
+      if (Math.abs(num - Math.round(num)) < 1e-8) {
+        return Math.round(num);
+      } else {
+        return num.toFixed(2);
       }
     }
 
