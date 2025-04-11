@@ -675,12 +675,17 @@
       localStorage.setItem('darkMode', !isLight);
     });
 
-    // Save player input to localStorage and re-run aggregation when "Enter" is pressed
+    // Save player input to localStorage and re-run aggregation when "Enter" is pressed.
     document.getElementById('playerName').addEventListener('keyup', (e) => {
       if (e.key === "Enter") {
         const val = document.getElementById('playerName').value.trim();
         localStorage.setItem('playerName', val);
-        // Reset aggregations and reprocess CSV data based on stored matchData
+        // Clear previous tables/tabs from all containers.
+        ['tabsAll', 'outputAll', 'tabsMap', 'outputMap', 'tabsWith', 'outputWith', 'tabsAgainst', 'outputAgainst']
+          .forEach(id => {
+            document.getElementById(id).innerHTML = '';
+          });
+        // Reset aggregations and reprocess CSV data based on stored matchData.
         teammatesStats = {};
         opponentsStats = {};
         mapStats = {};
