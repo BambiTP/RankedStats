@@ -161,7 +161,7 @@
     }
     th, td {
       border: 1px solid #444;
-      padding: 6px; /* Reduced padding for a slimmer look */
+      padding: 6px;
       text-align: center;
       font-size: 16px;
       color: inherit;
@@ -203,34 +203,41 @@
       <a id="statsWithNav" class="active">Stats With</a>
       <a id="statsAgainstNav">Stats Against</a>
       <a id="statsAllNav">All Stats</a>
+      <a id="statsMapNav">Map Stats</a>
     </div>
     <button id="modeToggle" class="toggle-button">Light Mode</button>
   </div>
 
   <h1>Team Stats Aggregator</h1>
-  <!-- The player filter applies only to the first two tabs -->
+  <!-- The player filter applies only to the first two tabs and map stats -->
   <div class="input-group">
-    <label for="playerName">Player Name Filter (for Stats With/Against):</label>
+    <label for="playerName">Player Name Filter (for Stats With/Against/Map Stats):</label>
     <input type="text" id="playerName" placeholder="Enter player name (e.g., jig)" />
   </div>
   <div id="message" class="message"></div>
 
-  <!-- Stats With Container (only games where the filter player appears) -->
+  <!-- Stats With Container -->
   <div id="statsWithContainer" class="outer-tabs">
     <div id="tabsWith" class="sub-tabs"></div>
     <div id="outputWith"></div>
   </div>
 
-  <!-- Stats Against Container (only games where the filter player appears) -->
+  <!-- Stats Against Container -->
   <div id="statsAgainstContainer" class="outer-tabs" style="display: none;">
     <div id="tabsAgainst" class="sub-tabs"></div>
     <div id="outputAgainst"></div>
   </div>
 
-  <!-- All Stats Container (all games, aggregated for each player) -->
+  <!-- All Stats Container -->
   <div id="statsAllContainer" class="outer-tabs" style="display: none;">
     <div id="tabsAll" class="sub-tabs"></div>
     <div id="outputAll"></div>
+  </div>
+
+  <!-- Map Stats Container -->
+  <div id="statsMapContainer" class="outer-tabs" style="display: none;">
+    <div id="tabsMap" class="sub-tabs"></div>
+    <div id="outputMap"></div>
   </div>
 
   <script>
@@ -272,11 +279,12 @@
       'Miscellaneous': ['Minutes', 'Win %', 'Pups', 'Pup %', 'NDPops', 'NRTags']
     };
 
-    // Data storage for the three aggregations
+    // Data storage for the three aggregations and map stats
     let matchData = {};      // Grouped by matchId (used for filtered aggregation)
     let teammatesStats = {}; // Aggregated for "Stats With" (only matches where filter player appears)
     let opponentsStats = {}; // Aggregated for "Stats Against" (only matches where filter player appears)
     let allStats = {};       // Aggregated for "All Stats" (all matches, regardless of filter)
+    let mapStats = {};       // Aggregated for Map Stats (only matches where filtered player appears)
     let playerTeamMap = {};  // Map matchId to the filtered player's team (for Stats With/Against)
 
     // Load the CSV automatically from combinedStats.csv
@@ -311,7 +319,6 @@
       });
 
       // Process for filtered aggregation (Stats With/Against)
-      // Only include matches where the filtered player appears
       const playerFilter = document.getElementById('playerName').value.trim().toLowerCase();
       const relevantGames = [];
       Object.entries(matchData).forEach(([matchId, players]) => {
@@ -362,7 +369,6 @@
           }
           const stats = opponentsStats[name];
           stats.Games++;
-          // For opponents, a win for them is when filtered player's team loses
           stats[result === 'loss' ? 'Wins' : 'Losses']++;
           stats.CapsFor += capsAgainst;
           stats.CapsAgainst += capsFor;
@@ -381,7 +387,7 @@
           teams[p.team] = (teams[p.team] || 0) + parseInt(p.Captures || 0, 10);
         });
         const teamNames = Object.keys(teams);
-        if (teamNames.length !== 2 || teams[teamNames[0]] === teams[teamNames[1]]) return; // skip tie matches or non-2-team matches
+        if (teamNames.length !== 2 || teams[teamNames[0]] === teams[teamNames[1]]) return;
         const winningTeam = teams[teamNames[0]] > teams[teamNames[1]] ? teamNames[0] : teamNames[1];
         // For each player in the match, add stats to allStats
         players.forEach(p => {
@@ -399,7 +405,6 @@
           } else {
             stats.Losses++;
           }
-          // Determine team totals for player's team and opposing team
           const teamCapsFor = teams[p.team];
           const teamCapsAgainst = teams[p.team === teamNames[0] ? teamNames[1] : teamNames[0]];
           stats.CapsFor += teamCapsFor;
@@ -411,19 +416,23 @@
         });
       });
 
+      // Process for "Map Stats" aggregation (filtered player's individual stats by map)
+      computeMapStats();
+
       // Compute derived and summary stats for each dataset
       computeDerivedAndSummary(teammatesStats);
       computeDerivedAndSummary(opponentsStats);
       computeDerivedAndSummary(allStats);
+      // Derived stats for mapStats computed within computeMapStats()
 
       // Render sub-tabs for each top-level container
       renderSubTabs();
       renderAllSubTabs();
+      renderMapStats();
       displayMessage('Stats aggregated.');
     }
 
     // Compute derived stats and summary for each player's aggregated stats.
-    // The Summary now includes Wins, Losses, and Win %.
     function computeDerivedAndSummary(dataset) {
       Object.values(dataset).forEach(stats => {
         stats.Derived = {};
@@ -450,6 +459,55 @@
       });
     }
 
+    // Compute Map Stats for the filtered player's individual performance,
+    // aggregated by the 'map' column.
+    function computeMapStats() {
+      mapStats = {}; // Reset map stats
+      const playerFilter = document.getElementById('playerName').value.trim().toLowerCase();
+      // Iterate over each match
+      Object.entries(matchData).forEach(([matchId, players]) => {
+        // Find the filtered player's row in the match
+        const playerRow = players.find(p => p.player.toLowerCase() === playerFilter);
+        if (!playerRow) return; // Skip if the player isn't in this match
+        // Use the map value from the player's row
+        const mapName = playerRow.map;
+        if (!mapName) return; // Skip if no map info
+        // Compute team totals (assumes two teams)
+        const sameTeam = players.filter(p => p.team === playerRow.team);
+        const oppTeam = players.filter(p => p.team !== playerRow.team);
+        const capsFor = sameTeam.reduce((a, p) => a + parseInt(p.Captures || 0, 10), 0);
+        const capsAgainst = oppTeam.reduce((a, p) => a + parseInt(p.Captures || 0, 10), 0);
+        if (capsFor === capsAgainst) return; // Skip tie matches
+        const result = capsFor > capsAgainst ? 'win' : 'loss';
+
+        // Initialize the map entry if it doesn't exist
+        if (!mapStats[mapName]) {
+          mapStats[mapName] = {
+            Games: 0, Wins: 0, Losses: 0, CapsFor: 0, CapsAgainst: 0, Minutes: 0,
+            Totals: Object.fromEntries(rawStats.map(stat => [stat, 0]))
+          };
+        }
+        const stats = mapStats[mapName];
+        stats.Games++;
+        if (result === 'win') {
+          stats.Wins++;
+        } else {
+          stats.Losses++;
+        }
+        // For map stats we aggregate the filtered player's individual stats,
+        // but also add the team totals from the match.
+        stats.CapsFor += capsFor;
+        stats.CapsAgainst += capsAgainst;
+        rawStats.forEach(stat => {
+          stats.Totals[stat] += parseFloat(playerRow[stat] || 0);
+        });
+        stats.Minutes += parseFloat(playerRow.Minutes || 0);
+      });
+
+      // Compute derived and summary stats for the map stats
+      computeDerivedAndSummary(mapStats);
+    }
+
     // Render sub-tabs for "Stats With" and "Stats Against"
     function renderSubTabs() {
       // For "Stats With"
@@ -457,7 +515,6 @@
       const outputWith = document.getElementById('outputWith');
       tabsWith.innerHTML = '';
       outputWith.innerHTML = '';
-      // Summary headers do not include "Player" because createSubTab adds it automatically.
       const summaryHeaders = [ "Minutes", "Wins", "Losses", "Win %", "+/-", "Tags", "Pops", "Grabs", "Drops", "Hold", "Caps", "Prevent", "Returns"];
       createSubTab(tabsWith, outputWith, "Summary", summaryHeaders, teammatesStats, true);
       Object.entries(statCategories).forEach(([label, stats]) => {
@@ -488,6 +545,57 @@
       });
     }
 
+    // Render sub-tab for "Map Stats"
+    function renderMapStats() {
+      const tabsMap = document.getElementById('tabsMap');
+      const outputMap = document.getElementById('outputMap');
+      tabsMap.innerHTML = '';
+      outputMap.innerHTML = '';
+      // For map stats, we create one tab that displays summary for each map
+      // The table will have a row per unique map.
+      const button = document.createElement('button');
+      button.className = 'tab-button';
+      button.textContent = 'Map Stats';
+      const content = document.createElement('div');
+      content.className = 'tab-content';
+      
+      // Create the table header: add 'Map' as first column
+      let html = '<table><thead><tr>';
+      const headers = ['Map', "Minutes", "Wins", "Losses", "Win %", "+/-", "Tags", "Pops", "Grabs", "Drops", "Hold", "Caps", "Prevent", "Returns"];
+      headers.forEach((h, i) => {
+        html += `<th data-col-index="${i}">${h}</th>`;
+      });
+      html += '</tr></thead><tbody>';
+      // Create a row for each map (key in mapStats)
+      Object.entries(mapStats).forEach(([map, stats]) => {
+        html += '<tr>';
+        html += `<td>${map}</td>`;
+        const summary = stats.Summary;
+        headers.slice(1).forEach(col => {
+          const val = summary[col] !== undefined ? summary[col] : 0;
+          html += `<td data-sort="${val}">${Number(val).toFixed(2)}</td>`;
+        });
+        html += '</tr>';
+      });
+      html += '</tbody></table>';
+      content.innerHTML = html;
+
+      tabsMap.appendChild(button);
+      outputMap.appendChild(content);
+      setupCustomTableSort(content.querySelector('table'));
+
+      button.addEventListener('click', () => {
+        Array.from(tabsMap.children).forEach(btn => btn.classList.remove('active'));
+        Array.from(outputMap.children).forEach(cont => cont.classList.remove('active'));
+        button.classList.add('active');
+        content.classList.add('active');
+      });
+      if (!tabsMap.querySelector('.tab-button.active')) {
+        button.classList.add('active');
+        content.classList.add('active');
+      }
+    }
+
     // Create a sub-tab for a given category.
     // If isSummary is true, use the Summary object from each player's stats.
     function createSubTab(tabContainer, outputContainer, label, stats, dataset, isSummary) {
@@ -498,7 +606,6 @@
       content.className = 'tab-content';
 
       let html = '<table><thead><tr>';
-      // Always prepend "Player" column
       let headers = ['Player'].concat(stats);
       headers.forEach((h, i) => {
         html += `<th data-col-index="${i}">${h}</th>`;
@@ -511,7 +618,7 @@
           const summary = playerStats.Summary;
           headers.slice(1).forEach(col => {
             const val = summary[col] !== undefined ? summary[col] : 0;
-            html += `<td data-col-index="0" data-sort="${val}">${formatNumber(val)}</td>`;
+            html += `<td data-sort="${val}">${Number(val).toFixed(2)}</td>`;
           });
         } else {
           stats.forEach(stat => {
@@ -519,7 +626,8 @@
                          : stat in playerStats ? playerStats[stat]
                          : stat in playerStats.Derived ? playerStats.Derived[stat]
                          : 0;
-            html += `<td data-col-index="0" data-sort="${value}">${formatNumber(value)}</td>`;
+            const num = typeof value === 'number' ? value : parseFloat(value) || 0;
+            html += `<td data-sort="${num}">${Number(num).toFixed(2)}</td>`;
           });
         }
         html += '</tr>';
@@ -540,18 +648,6 @@
       if (!tabContainer.querySelector('.tab-button.active')) {
         button.classList.add('active');
         content.classList.add('active');
-      }
-    }
-
-    // Helper function to format numbers:
-    // If the number is an integer, display without decimals; otherwise, with 2 decimals.
-    function formatNumber(val) {
-      const num = Number(val);
-      if (isNaN(num)) return val;
-      if (Math.abs(num - Math.round(num)) < 1e-8) {
-        return Math.round(num);
-      } else {
-        return num.toFixed(2);
       }
     }
 
@@ -585,25 +681,41 @@
       document.getElementById('statsWithNav').classList.add('active');
       document.getElementById('statsAgainstNav').classList.remove('active');
       document.getElementById('statsAllNav').classList.remove('active');
+      document.getElementById('statsMapNav').classList.remove('active');
       document.getElementById('statsWithContainer').style.display = '';
       document.getElementById('statsAgainstContainer').style.display = 'none';
       document.getElementById('statsAllContainer').style.display = 'none';
+      document.getElementById('statsMapContainer').style.display = 'none';
     });
     document.getElementById('statsAgainstNav').addEventListener('click', () => {
       document.getElementById('statsAgainstNav').classList.add('active');
       document.getElementById('statsWithNav').classList.remove('active');
       document.getElementById('statsAllNav').classList.remove('active');
+      document.getElementById('statsMapNav').classList.remove('active');
       document.getElementById('statsWithContainer').style.display = 'none';
       document.getElementById('statsAgainstContainer').style.display = '';
       document.getElementById('statsAllContainer').style.display = 'none';
+      document.getElementById('statsMapContainer').style.display = 'none';
     });
     document.getElementById('statsAllNav').addEventListener('click', () => {
       document.getElementById('statsAllNav').classList.add('active');
       document.getElementById('statsWithNav').classList.remove('active');
       document.getElementById('statsAgainstNav').classList.remove('active');
+      document.getElementById('statsMapNav').classList.remove('active');
       document.getElementById('statsWithContainer').style.display = 'none';
       document.getElementById('statsAgainstContainer').style.display = 'none';
       document.getElementById('statsAllContainer').style.display = '';
+      document.getElementById('statsMapContainer').style.display = 'none';
+    });
+    document.getElementById('statsMapNav').addEventListener('click', () => {
+      document.getElementById('statsMapNav').classList.add('active');
+      document.getElementById('statsWithNav').classList.remove('active');
+      document.getElementById('statsAgainstNav').classList.remove('active');
+      document.getElementById('statsAllNav').classList.remove('active');
+      document.getElementById('statsWithContainer').style.display = 'none';
+      document.getElementById('statsAgainstContainer').style.display = 'none';
+      document.getElementById('statsAllContainer').style.display = 'none';
+      document.getElementById('statsMapContainer').style.display = '';
     });
 
     // Dark/Light Mode Toggle
@@ -614,12 +726,13 @@
         : 'Light Mode';
     });
 
-    // Optionally, re-run aggregation when the player filter changes (for Stats With/Against)
+    // Re-run aggregation when the player filter changes (for Stats With/Against/Map Stats)
     document.getElementById('playerName').addEventListener('keyup', (e) => {
       if (e.key === "Enter") {
         // Reset filtered aggregations and re-process only the relevant games.
         teammatesStats = {};
         opponentsStats = {};
+        mapStats = {};
         playerTeamMap = {};
         const playerFilter = document.getElementById('playerName').value.trim().toLowerCase();
         const relevantGames = [];
@@ -675,9 +788,14 @@
             stats.Minutes += parseFloat(p.Minutes || 0);
           });
         });
+        // Recompute map stats for the filtered player's matches
+        computeMapStats();
         computeDerivedAndSummary(teammatesStats);
         computeDerivedAndSummary(opponentsStats);
+        computeDerivedAndSummary(allStats);
         renderSubTabs();
+        renderAllSubTabs();
+        renderMapStats();
       }
     });
   </script>
