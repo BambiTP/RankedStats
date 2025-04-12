@@ -457,7 +457,7 @@
       computeMapStats();
 
       // NEW: Compute the totals across maps for the Map Totals tab.
-      // For each unique match, sum each player's Minutes, Prevent, Grabs, and Captures.
+      // For each unique match, sum each player's Minutes, Prevent, Grabs, Captures, and Hold.
       computeMapTotals();
 
       // Compute derived and summary stats for each aggregation
@@ -534,7 +534,7 @@
 
     // NEW: Compute mapTotals aggregation for the Map Totals tab.
     // For each unique match in matchData:
-    // - Sum all players' Minutes, Prevent, Grabs, and Captures.
+    // - Sum all players' Minutes, Prevent, Grabs, Captures, and Hold.
     // - Increment the TimesPlayed count.
     function computeMapTotals() {
       mapTotals = {}; // Reset
@@ -549,7 +549,8 @@
             TotalMinutes: 0,
             TotalPrevent: 0,
             TotalGrabs: 0,
-            TotalCaptures: 0
+            TotalCaptures: 0,
+            TotalHold: 0
           };
         }
         // For each match, count one game played on that map.
@@ -559,6 +560,7 @@
           mapTotals[mapName].TotalPrevent += parseFloat(p["Prevent"] || 0);
           mapTotals[mapName].TotalGrabs += parseFloat(p["Grabs"] || 0);
           mapTotals[mapName].TotalCaptures += parseFloat(p["Captures"] || 0);
+          mapTotals[mapName].TotalHold += parseFloat(p["Hold"] || 0);
         });
       });
     }
@@ -653,7 +655,7 @@
     }
 
     // NEW: Render Map Totals Sub-Tab for Maps.
-    // Columns: Map, Times Played, Total Minutes, Prevent/Min, Grabs/Min, Captures/Min.
+    // Columns: Map, Games Played, Total Minutes, Prevent/Min, Grabs/Min, Captures/Min, Hold/Min.
     function renderMapTotalsTab() {
       const tabsMap = document.getElementById('tabsMap');
       const outputMap = document.getElementById('outputMap');
@@ -675,6 +677,7 @@
       html += '<th data-col-index="3">Prevent/Min</th>';
       html += '<th data-col-index="4">Grabs/Min</th>';
       html += '<th data-col-index="5">Captures/Min</th>';
+      html += '<th data-col-index="6">Hold/Min</th>';
       html += '</tr></thead><tbody>';
       Object.entries(mapTotals).forEach(([mapName, stats]) => {
         // Calculate rates based on the total minutes; avoid division by zero.
@@ -682,13 +685,15 @@
         const preventRate = minutes ? stats.TotalPrevent / minutes : 0;
         const grabsRate = minutes ? stats.TotalGrabs / minutes : 0;
         const capturesRate = minutes ? stats.TotalCaptures / minutes : 0;
+        const holdRate = minutes ? stats.TotalHold / minutes : 0;
         html += `<tr>`;
         html += `<td>${mapName}</td>`;
-        html += `<td data-sort="${stats.TimesPlayed}">${stats.TimesPlayed}</td>`;
-        html += `<td data-sort="${minutes}">${Number(minutes).toFixed(2)}</td>`;
-        html += `<td data-sort="${preventRate}">${Number(preventRate).toFixed(2)}</td>`;
-        html += `<td data-sort="${grabsRate}">${Number(grabsRate).toFixed(2)}</td>`;
-        html += `<td data-sort="${capturesRate}">${Number(capturesRate).toFixed(2)}</td>`;
+        html += `<td data-col-index="1" data-sort="${stats.TimesPlayed}">${stats.TimesPlayed}</td>`;
+        html += `<td data-col-index="2" data-sort="${minutes}">${Number(minutes).toFixed(2)}</td>`;
+        html += `<td data-col-index="3" data-sort="${preventRate}">${Number(preventRate).toFixed(2)}</td>`;
+        html += `<td data-col-index="4" data-sort="${grabsRate}">${Number(grabsRate).toFixed(2)}</td>`;
+        html += `<td data-col-index="5" data-sort="${capturesRate}">${Number(capturesRate).toFixed(2)}</td>`;
+        html += `<td data-col-index="6" data-sort="${holdRate}">${Number(holdRate).toFixed(2)}</td>`;
         html += `</tr>`;
       });
       html += '</tbody></table>';
