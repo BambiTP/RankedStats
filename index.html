@@ -456,7 +456,8 @@
       // Aggregate Map Stats for the filtered player's matches (grouped by "mapName")
       computeMapStats();
 
-      // NEW: Compute the totals across maps (for the new Map Totals tab)
+      // NEW: Compute the totals across maps for the Map Totals tab.
+      // For each unique match, sum each player's Minutes, Prevent, Grabs, and Captures.
       computeMapTotals();
 
       // Compute derived and summary stats for each aggregation
@@ -532,7 +533,9 @@
     }
 
     // NEW: Compute mapTotals aggregation for the Map Totals tab.
-    // For total times played, sum each unique match. For stats, add everyone’s values.
+    // For each unique match in matchData:
+    // - Sum all players' Minutes, Prevent, Grabs, and Captures.
+    // - Increment the TimesPlayed count.
     function computeMapTotals() {
       mapTotals = {}; // Reset
       Object.values(matchData).forEach(match => {
@@ -540,23 +543,22 @@
         // Assume the map name is the same for every row in the match.
         const mapName = match[0].mapName;
         if (!mapName) return;
-        // If this map hasn’t been seen yet, initialize its totals.
         if (!mapTotals[mapName]) {
           mapTotals[mapName] = {
             TimesPlayed: 0,
+            TotalMinutes: 0,
             TotalPrevent: 0,
-            TotalHold: 0,
+            TotalGrabs: 0,
             TotalCaptures: 0
           };
         }
-        // Each unique match increases "TimesPlayed" by one.
+        // For each match, count one game played on that map.
         mapTotals[mapName].TimesPlayed++;
-
-        // Sum the stats from every player in this match.
         match.forEach(p => {
+          mapTotals[mapName].TotalMinutes += parseFloat(p["Minutes"] || 0);
           mapTotals[mapName].TotalPrevent += parseFloat(p["Prevent"] || 0);
-          mapTotals[mapName].TotalHold    += parseFloat(p["Hold"] || 0);
-          mapTotals[mapName].TotalCaptures+= parseFloat(p["Captures"] || 0);
+          mapTotals[mapName].TotalGrabs += parseFloat(p["Grabs"] || 0);
+          mapTotals[mapName].TotalCaptures += parseFloat(p["Captures"] || 0);
         });
       });
     }
@@ -646,11 +648,12 @@
       Object.entries(statCategories).forEach(([label, stats]) => {
         createSubTab(tabsMap, outputMap, label, stats, mapStats, false, "Map");
       });
-      // NEW: Append the Map Totals tab.
+      // NEW: Append the updated Map Totals tab.
       renderMapTotalsTab();
     }
 
-    // NEW: Render Map Totals Sub-Tab for Maps
+    // NEW: Render Map Totals Sub-Tab for Maps.
+    // Columns: Map, Times Played, Total Minutes, Prevent/Min, Grabs/Min, Captures/Min.
     function renderMapTotalsTab() {
       const tabsMap = document.getElementById('tabsMap');
       const outputMap = document.getElementById('outputMap');
@@ -667,18 +670,25 @@
       // Build the table header and rows
       let html = '<table><thead><tr>';
       html += '<th data-col-index="0">Map</th>';
-      html += '<th data-col-index="1">Times Played</th>';
-      html += '<th data-col-index="2">Total Prevent</th>';
-      html += '<th data-col-index="3">Total Hold</th>';
-      html += '<th data-col-index="4">Total Captures</th>';
+      html += '<th data-col-index="1">Games Played</th>';
+      html += '<th data-col-index="2">Total Minutes</th>';
+      html += '<th data-col-index="3">Prevent/Min</th>';
+      html += '<th data-col-index="4">Grabs/Min</th>';
+      html += '<th data-col-index="5">Captures/Min</th>';
       html += '</tr></thead><tbody>';
       Object.entries(mapTotals).forEach(([mapName, stats]) => {
+        // Calculate rates based on the total minutes; avoid division by zero.
+        const minutes = stats.TotalMinutes;
+        const preventRate = minutes ? stats.TotalPrevent / minutes : 0;
+        const grabsRate = minutes ? stats.TotalGrabs / minutes : 0;
+        const capturesRate = minutes ? stats.TotalCaptures / minutes : 0;
         html += `<tr>`;
         html += `<td>${mapName}</td>`;
         html += `<td data-sort="${stats.TimesPlayed}">${stats.TimesPlayed}</td>`;
-        html += `<td data-sort="${stats.TotalPrevent}">${Number(stats.TotalPrevent).toFixed(2)}</td>`;
-        html += `<td data-sort="${stats.TotalHold}">${Number(stats.TotalHold).toFixed(2)}</td>`;
-        html += `<td data-sort="${stats.TotalCaptures}">${Number(stats.TotalCaptures).toFixed(2)}</td>`;
+        html += `<td data-sort="${minutes}">${Number(minutes).toFixed(2)}</td>`;
+        html += `<td data-sort="${preventRate}">${Number(preventRate).toFixed(2)}</td>`;
+        html += `<td data-sort="${grabsRate}">${Number(grabsRate).toFixed(2)}</td>`;
+        html += `<td data-sort="${capturesRate}">${Number(capturesRate).toFixed(2)}</td>`;
         html += `</tr>`;
       });
       html += '</tbody></table>';
