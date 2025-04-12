@@ -549,9 +549,8 @@
             TotalMinutes: 0,
             TotalPrevent: 0,
             TotalGrabs: 0,
-            TotalCaptures: 0,
-            TotalHold: 0
-          };
+            TotalHold: 0,
+            TotalCaptures: 0,          };
         }
         // For each match, count one game played on that map.
         mapTotals[mapName].TimesPlayed++;
@@ -559,8 +558,8 @@
           mapTotals[mapName].TotalMinutes += parseFloat(p["Minutes"] || 0);
           mapTotals[mapName].TotalPrevent += parseFloat(p["Prevent"] || 0);
           mapTotals[mapName].TotalGrabs += parseFloat(p["Grabs"] || 0);
-          mapTotals[mapName].TotalCaptures += parseFloat(p["Captures"] || 0);
           mapTotals[mapName].TotalHold += parseFloat(p["Hold"] || 0);
+          mapTotals[mapName].TotalCaptures += parseFloat(p["Captures"] || 0);
         });
       });
     }
