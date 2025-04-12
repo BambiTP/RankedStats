@@ -303,6 +303,9 @@
     let mapStats = {};       // For "Map Stats" (aggregated by mapName)
     let playerTeamMap = {};  // Map of matchId to filtered player's team
 
+    // NEW: Global variable to store map totals for the new Map Totals tab
+    let mapTotals = {};
+
     // Load saved player name and mode from localStorage
     const savedPlayer = localStorage.getItem('playerName');
     if (savedPlayer) {
@@ -450,14 +453,17 @@
         });
       });
 
-      // Aggregate Map Stats for the filtered player (using "mapName" column)
+      // Aggregate Map Stats for the filtered player's matches (grouped by "mapName")
       computeMapStats();
+
+      // NEW: Compute the totals across maps (for the new Map Totals tab)
+      computeMapTotals();
 
       // Compute derived and summary stats for each aggregation
       computeDerivedAndSummary(teammatesStats);
       computeDerivedAndSummary(opponentsStats);
       computeDerivedAndSummary(allStats);
-      // Map stats already computed in computeMapStats()
+      // Note: mapStats already had derived stats computed in computeMapStats()
 
       // Render sub-tabs for each container
       renderAll();
@@ -523,6 +529,36 @@
         stats.Minutes += parseFloat(playerRow.Minutes || 0);
       });
       computeDerivedAndSummary(mapStats);
+    }
+
+    // NEW: Compute mapTotals aggregation for the Map Totals tab.
+    // For total times played, sum each unique match. For stats, add everyone’s values.
+    function computeMapTotals() {
+      mapTotals = {}; // Reset
+      Object.values(matchData).forEach(match => {
+        if (match.length === 0) return;
+        // Assume the map name is the same for every row in the match.
+        const mapName = match[0].mapName;
+        if (!mapName) return;
+        // If this map hasn’t been seen yet, initialize its totals.
+        if (!mapTotals[mapName]) {
+          mapTotals[mapName] = {
+            TimesPlayed: 0,
+            TotalPrevent: 0,
+            TotalHold: 0,
+            TotalCaptures: 0
+          };
+        }
+        // Each unique match increases "TimesPlayed" by one.
+        mapTotals[mapName].TimesPlayed++;
+
+        // Sum the stats from every player in this match.
+        match.forEach(p => {
+          mapTotals[mapName].TotalPrevent += parseFloat(p["Prevent"] || 0);
+          mapTotals[mapName].TotalHold    += parseFloat(p["Hold"] || 0);
+          mapTotals[mapName].TotalCaptures+= parseFloat(p["Captures"] || 0);
+        });
+      });
     }
 
     // Generic function to create sub-tabs (for players or maps)
@@ -609,6 +645,58 @@
       createSubTab(tabsMap, outputMap, "Summary", summaryHeaders, mapStats, true, "Map");
       Object.entries(statCategories).forEach(([label, stats]) => {
         createSubTab(tabsMap, outputMap, label, stats, mapStats, false, "Map");
+      });
+      // NEW: Append the Map Totals tab.
+      renderMapTotalsTab();
+    }
+
+    // NEW: Render Map Totals Sub-Tab for Maps
+    function renderMapTotalsTab() {
+      const tabsMap = document.getElementById('tabsMap');
+      const outputMap = document.getElementById('outputMap');
+
+      // Create the sub-tab button for "Map Totals"
+      const button = document.createElement('button');
+      button.className = 'tab-button';
+      button.textContent = "Map Totals";
+
+      // Create the corresponding content container
+      const content = document.createElement('div');
+      content.className = 'tab-content';
+
+      // Build the table header and rows
+      let html = '<table><thead><tr>';
+      html += '<th data-col-index="0">Map</th>';
+      html += '<th data-col-index="1">Times Played</th>';
+      html += '<th data-col-index="2">Total Prevent</th>';
+      html += '<th data-col-index="3">Total Hold</th>';
+      html += '<th data-col-index="4">Total Captures</th>';
+      html += '</tr></thead><tbody>';
+      Object.entries(mapTotals).forEach(([mapName, stats]) => {
+        html += `<tr>`;
+        html += `<td>${mapName}</td>`;
+        html += `<td data-sort="${stats.TimesPlayed}">${stats.TimesPlayed}</td>`;
+        html += `<td data-sort="${stats.TotalPrevent}">${Number(stats.TotalPrevent).toFixed(2)}</td>`;
+        html += `<td data-sort="${stats.TotalHold}">${Number(stats.TotalHold).toFixed(2)}</td>`;
+        html += `<td data-sort="${stats.TotalCaptures}">${Number(stats.TotalCaptures).toFixed(2)}</td>`;
+        html += `</tr>`;
+      });
+      html += '</tbody></table>';
+      content.innerHTML = html;
+
+      // Append the new tab button and content to the maps containers.
+      tabsMap.appendChild(button);
+      outputMap.appendChild(content);
+
+      // Set up sorting for the new table.
+      setupCustomTableSort(content.querySelector('table'));
+
+      // Configure the sub-tab’s click behavior.
+      button.addEventListener('click', () => {
+        Array.from(tabsMap.children).forEach(btn => btn.classList.remove('active'));
+        Array.from(outputMap.children).forEach(cont => cont.classList.remove('active'));
+        button.classList.add('active');
+        content.classList.add('active');
       });
     }
 
@@ -724,6 +812,7 @@
         opponentsStats = {};
         allStats = {};
         mapStats = {};
+        mapTotals = {};
         playerTeamMap = {};
         // Re-run processCSVData using the original CSV data (stored in csvData)
         processCSVData(csvData);
