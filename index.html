@@ -264,7 +264,7 @@
       const playerInput = document.getElementById('playerName').value.trim();
       // Save the player's name in localStorage
       localStorage.setItem('playerName', playerInput);
-      const endpointUrl = "html://parser-production-f71c.up.railway.app/parse_csv?player=" + encodeURIComponent(playerInput);
+      const endpointUrl = "https://parser-production-f71c.up.railway.app/parse_csv?player=" + encodeURIComponent(playerInput);
       fetch(endpointUrl)
         .then(response => response.json())
         .then(data => {
