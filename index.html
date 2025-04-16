@@ -5,84 +5,234 @@
   <!-- Load PapaParse for CSV parsing -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
   <style>
-    /* Example CSS (update or replace with your actual styles) */
+    /* Base Styles (Dark Mode as default) */
     body {
       font-family: Arial, sans-serif;
       margin: 0;
       padding: 0;
+      box-sizing: border-box;
       background-color: #121212;
       color: #e0e0e0;
+      line-height: 1.6;
+      font-size: 18px;
       transition: background-color 0.3s ease, color 0.3s ease;
     }
+    /* Light mode overrides */
     body.light-mode {
       background-color: #f9f9fb;
       color: #333;
     }
+    /* Top bar for navigation, mode toggle and player input (non‑sticky) */
     .top-bar {
       background-color: #1f1f1f;
       padding: 10px 20px;
+      color: #e0e0e0;
       display: flex;
       align-items: center;
       justify-content: space-between;
+      z-index: 100;
+    }
+    /* Navigation links in top bar */
+    .nav {
+      display: flex;
+      gap: 20px;
+      align-items: center;
     }
     .nav a {
       color: inherit;
       text-decoration: none;
-      margin-right: 20px;
+      padding: 8px 16px;
+      border-radius: 4px;
+      transition: background-color 0.2s ease;
       cursor: pointer;
+      font-size: 18px;
     }
-    .player-input input,
-    .filter-input input {
+    .nav a:hover {
+      background-color: #333;
+    }
+    .nav a.active {
+      background-color: #1e90ff;
+      font-weight: bold;
+      color: #fff;
+    }
+    /* Input styling inside top bar */
+    .player-input,
+    .filter-input {
+      margin-left: 20px;
+    }
+    .player-input input[type="text"],
+    .filter-input input[type="number"] {
       padding: 6px 8px;
       border: 1px solid #444;
       border-radius: 4px;
       background-color: #1f1f1f;
       color: #e0e0e0;
+      font-size: 16px;
     }
-    body.light-mode .player-input input,
-    body.light-mode .filter-input input {
+    body.light-mode .player-input input[type="text"],
+    body.light-mode .filter-input input[type="number"] {
       background-color: #fff;
       color: #333;
       border: 1px solid #ccc;
     }
-    /* Add more CSS as needed */
+    /* Header */
+    h1 {
+      text-align: center;
+      margin: 20px 0;
+      color: inherit;
+      font-size: 2rem;
+    }
+    /* Outer container for stats sections */
+    .outer-tabs {
+      padding: 20px;
+    }
+    /* Sub-tabs for each category */
+    .sub-tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: center;
+      margin-bottom: 10px;
+    }
+    .tab-button {
+      padding: 10px 15px;
+      background: #1f1f1f;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-weight: 500;
+      transition: background 0.3s ease;
+      color: inherit;
+      font-size: 16px;
+    }
+    .tab-button:hover {
+      background: #333;
+    }
+    .tab-button.active {
+      background: #1e90ff;
+      color: #fff;
+      font-weight: 700;
+    }
+    .tab-content {
+      display: none;
+      background: #1f1f1f;
+      border: 1px solid #444;
+      border-radius: 5px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+      padding: 20px;
+      margin-top: 10px;
+    }
+    .tab-content.active {
+      display: block;
+    }
+    /* Table styling */
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin-top: 10px;
+      background-color: #1f1f1f;
+    }
+    body.light-mode table {
+      background-color: #fff;
+    }
+    th, td {
+      border: 1px solid #444;
+      padding: 6px;
+      text-align: center;
+      font-size: 16px;
+      color: inherit;
+    }
+    /* Sticky table headers remain at the top of the page */
+    table th {
+      position: sticky;
+      top: 0;
+      background-color: #2b2b2b;
+      z-index: 2;
+    }
+    body.light-mode th {
+      background-color: #f1f1f1;
+    }
+    th:hover {
+      background-color: #333;
+    }
+    tr:nth-child(even) {
+      background-color: #2a2a2a;
+    }
+    body.light-mode tr:nth-child(even) {
+      background-color: #fafafa;
+    }
+    tr:hover {
+      background-color: #333;
+    }
+    body.light-mode tr:hover {
+      background-color: #e0e0e0;
+    }
+    /* Light mode additional styles */
+    body.light-mode .tab-button {
+      background: #f1f1f1;
+      color: #333;
+    }
+    body.light-mode .tab-content {
+      background-color: #fff;
+      color: #333;
+      border: 1px solid #ccc;
+    }
+    /* Styles for the note displayed to the left of the subtabs in Stats With and Stats Against */
+    .stats-note {
+      max-width: 300px;
+      padding: 10px;
+      background-color: #2b2b2b;
+      color: #fff;
+      font-size: 16px;
+      border-radius: 5px;
+      margin-right: 20px;
+    }
+    body.light-mode .stats-note {
+      background-color: #f1f1f1;
+      color: #333;
+    }
   </style>
 </head>
 <body>
-  <!-- Top Bar with Navigation, Player Input, and Mode Toggle -->
+  <!-- Top Bar with Navigation, Player Input, Minutes Filter and Mode Toggle -->
   <div class="top-bar">
     <div class="nav">
+      <!-- Reordered navigation links -->
       <a id="statsAllNav" class="active">All Stats</a>
       <a id="statsMapNav">Map Stats</a>
       <a id="statsWithNav">Stats With</a>
       <a id="statsAgainstNav">Stats Against</a>
-      <!-- Player Input -->
+      <!-- Player input inside nav -->
       <div class="player-input">
         <label for="playerName" style="display: none;">Player:</label>
         <input type="text" id="playerName" placeholder="Player name (e.g., jig)" />
       </div>
-      <!-- Filter Input Example -->
+      <!-- New filter input for minimum minutes -->
       <div class="filter-input">
-        <label for="minMinutes">Min Minutes:</label>
+        <label for="minMinutes" style="margin-left:20px;">Min Minutes:</label>
         <input type="number" id="minMinutes" placeholder="0" />
       </div>
     </div>
     <button id="modeToggle" class="toggle-button">Light Mode</button>
   </div>
-
-  <!-- Stats Containers (adjust as needed) -->
+  
+  <!-- Stats Containers -->
   <div id="statsAllContainer" class="outer-tabs">
     <div id="tabsAll" class="sub-tabs"></div>
     <div id="outputAll"></div>
   </div>
+
   <div id="statsMapContainer" class="outer-tabs" style="display: none;">
     <div id="tabsMap" class="sub-tabs"></div>
     <div id="outputMap"></div>
   </div>
-  <div id="statsWithContainer" class="outer-tabs" style="display: none;">
+
+  <!-- Stats With Container modified to include a note on the left -->
+  <div id="statsWithContainer" class="outer-tabs" style="display: none; display: flex; align-items: flex-start;">
     <div class="stats-note">
       <p>
         Note: The statistics in this section represent the performance of your teammates when playing alongside you.
+        They reflect how they performed against the opposing team – not your own performance.
       </p>
     </div>
     <div>
@@ -90,10 +240,13 @@
       <div id="outputWith"></div>
     </div>
   </div>
-  <div id="statsAgainstContainer" class="outer-tabs" style="display: none;">
+
+  <!-- Stats Against Container modified to include a note on the left -->
+  <div id="statsAgainstContainer" class="outer-tabs" style="display: none; display: flex; align-items: flex-start;">
     <div class="stats-note">
       <p>
         Note: The statistics here show the performance of your opponents in matches where you participated.
+        These numbers reflect their contributions against you – not how you fared against them.
       </p>
     </div>
     <div>
@@ -102,7 +255,6 @@
     </div>
   </div>
 
-  <!-- JavaScript placed at the end, wrapped in DOMContentLoaded -->
   <script>
     document.addEventListener("DOMContentLoaded", function() {
       // Define raw and derived stats, statCategories, and global aggregation objects.
