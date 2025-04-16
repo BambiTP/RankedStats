@@ -5,328 +5,545 @@
   <!-- Load PapaParse for CSV parsing -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
   <style>
-    /* (Your CSS remains unchanged) */
-    /* ... */
+    /* Example CSS (update or replace with your actual styles) */
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #121212;
+      color: #e0e0e0;
+      transition: background-color 0.3s ease, color 0.3s ease;
+    }
+    body.light-mode {
+      background-color: #f9f9fb;
+      color: #333;
+    }
+    .top-bar {
+      background-color: #1f1f1f;
+      padding: 10px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .nav a {
+      color: inherit;
+      text-decoration: none;
+      margin-right: 20px;
+      cursor: pointer;
+    }
+    .player-input input,
+    .filter-input input {
+      padding: 6px 8px;
+      border: 1px solid #444;
+      border-radius: 4px;
+      background-color: #1f1f1f;
+      color: #e0e0e0;
+    }
+    body.light-mode .player-input input,
+    body.light-mode .filter-input input {
+      background-color: #fff;
+      color: #333;
+      border: 1px solid #ccc;
+    }
+    /* Add more CSS as needed */
   </style>
 </head>
 <body>
-  <!-- (Your HTML remains unchanged: top bar, containers, etc.) -->
-  <!-- Top Bar and Stats Containers -->
-  <!-- ... -->
+  <!-- Top Bar with Navigation, Player Input, and Mode Toggle -->
+  <div class="top-bar">
+    <div class="nav">
+      <a id="statsAllNav" class="active">All Stats</a>
+      <a id="statsMapNav">Map Stats</a>
+      <a id="statsWithNav">Stats With</a>
+      <a id="statsAgainstNav">Stats Against</a>
+      <!-- Player Input -->
+      <div class="player-input">
+        <label for="playerName" style="display: none;">Player:</label>
+        <input type="text" id="playerName" placeholder="Player name (e.g., jig)" />
+      </div>
+      <!-- Filter Input Example -->
+      <div class="filter-input">
+        <label for="minMinutes">Min Minutes:</label>
+        <input type="number" id="minMinutes" placeholder="0" />
+      </div>
+    </div>
+    <button id="modeToggle" class="toggle-button">Light Mode</button>
+  </div>
 
+  <!-- Stats Containers (adjust as needed) -->
+  <div id="statsAllContainer" class="outer-tabs">
+    <div id="tabsAll" class="sub-tabs"></div>
+    <div id="outputAll"></div>
+  </div>
+  <div id="statsMapContainer" class="outer-tabs" style="display: none;">
+    <div id="tabsMap" class="sub-tabs"></div>
+    <div id="outputMap"></div>
+  </div>
+  <div id="statsWithContainer" class="outer-tabs" style="display: none;">
+    <div class="stats-note">
+      <p>
+        Note: The statistics in this section represent the performance of your teammates when playing alongside you.
+      </p>
+    </div>
+    <div>
+      <div id="tabsWith" class="sub-tabs"></div>
+      <div id="outputWith"></div>
+    </div>
+  </div>
+  <div id="statsAgainstContainer" class="outer-tabs" style="display: none;">
+    <div class="stats-note">
+      <p>
+        Note: The statistics here show the performance of your opponents in matches where you participated.
+      </p>
+    </div>
+    <div>
+      <div id="tabsAgainst" class="sub-tabs"></div>
+      <div id="outputAgainst"></div>
+    </div>
+  </div>
+
+  <!-- JavaScript placed at the end, wrapped in DOMContentLoaded -->
   <script>
-    // Define raw and derived stats, statCategories, and global aggregation objects.
-    const rawStats = [/* list of raw stats */ 'Captures', 'Grabs', 'Pops', 'Tags', 'Drops', 'Returns', 'Flaccids',
-      'Good Handoffs', 'Quick Returns', 'Returns in Base', 'Pups', 'Pups Available', 'Minutes', 'Hold', 'Prevent', 'Hold Against',
-      'KF', 'NDPops', 'NRTags', 'Captures off Handoffs'
-    ];
-    const derivedStats = {
-      'Win %': ['Wins', 'Games'],
-      'Caps/Min': ['Captures', 'Minutes'],
-      'Hold/Min': ['Hold', 'Minutes'],
-      'Grabs/Min': ['Grabs', 'Minutes'],
-      'Tags/Min': ['Tags', 'Minutes'],
-      'Returns/Min': ['Returns', 'Minutes'],
-      'Pops/Min': ['Pops', 'Minutes'],
-      'HoldAgainst/Min': ['Hold Against', 'Minutes'],
-      'Score %': ['Captures', 'Grabs'],
-      'Hold/Grab': ['Hold', 'Grabs'],
-      'Chain %': ['Good Handoffs', 'Grabs'],
-      'Flaccid %': ['Flaccids', 'Grabs'],
-      'Captures Off Handoffs': ['Captures off Handoffs', 'Good Handoffs'],
-      'K/D': ['Tags', 'Pops'],
-      'Prevent/Return': ['Prevent', 'Returns'],
-      'Prevent/HoldAgainst': ['Prevent', 'Hold Against'],
-      'QR %': ['Quick Returns', 'Returns'],
-      'Pup %': ['Pups', 'Pups Available']
-    };
-    const statCategories = {
-      'Offense': ['Minutes', 'Grabs', 'Captures', 'Hold', 'Flaccids', 'Good Handoffs', 'Captures off Handoffs'],
-      'Defense': ['Minutes', 'Tags', 'Returns', 'Quick Returns', 'Returns in Base', 'Prevent', 'Hold Against', 'KF'],
-      'Offense Rates': ['Minutes', 'Caps/Min', 'Hold/Min', 'Grabs/Min', 'Score %', 'Hold/Grab', 'Chain %', 'Flaccid %', 'Captures off Handoffs'],
-      'Defense Rates': ['Minutes', 'Tags/Min', 'Returns/Min', 'Pops/Min', 'HoldAgainst/Min', 'K/D', 'Prevent/Return', 'Prevent/HoldAgainst', 'QR %'],
-      'Miscellaneous': ['Minutes', 'Win %', 'Pups', 'Pup %', 'NDPops', 'NRTags']
-    };
+    document.addEventListener("DOMContentLoaded", function() {
+      // Define raw and derived stats, statCategories, and global aggregation objects.
+      const rawStats = [
+        'Captures', 'Grabs', 'Pops', 'Tags', 'Drops', 'Returns', 'Flaccids',
+        'Good Handoffs', 'Quick Returns', 'Returns in Base', 'Pups', 'Pups Available',
+        'Minutes', 'Hold', 'Prevent', 'Hold Against', 'KF', 'NDPops', 'NRTags',
+        'Captures off Handoffs'
+      ];
+      const derivedStats = {
+        'Win %': ['Wins', 'Games'],
+        'Caps/Min': ['Captures', 'Minutes'],
+        'Hold/Min': ['Hold', 'Minutes'],
+        'Grabs/Min': ['Grabs', 'Minutes'],
+        'Tags/Min': ['Tags', 'Minutes'],
+        'Returns/Min': ['Returns', 'Minutes'],
+        'Pops/Min': ['Pops', 'Minutes'],
+        'HoldAgainst/Min': ['Hold Against', 'Minutes'],
+        'Score %': ['Captures', 'Grabs'],
+        'Hold/Grab': ['Hold', 'Grabs'],
+        'Chain %': ['Good Handoffs', 'Grabs'],
+        'Flaccid %': ['Flaccids', 'Grabs'],
+        'Captures Off Handoffs': ['Captures off Handoffs', 'Good Handoffs'],
+        'K/D': ['Tags', 'Pops'],
+        'Prevent/Return': ['Prevent', 'Returns'],
+        'Prevent/HoldAgainst': ['Prevent', 'Hold Against'],
+        'QR %': ['Quick Returns', 'Returns'],
+        'Pup %': ['Pups', 'Pups Available']
+      };
+      const statCategories = {
+        'Offense': ['Minutes', 'Grabs', 'Captures', 'Hold', 'Flaccids', 'Good Handoffs', 'Captures off Handoffs'],
+        'Defense': ['Minutes', 'Tags', 'Returns', 'Quick Returns', 'Returns in Base', 'Prevent', 'Hold Against', 'KF'],
+        'Offense Rates': ['Minutes', 'Caps/Min', 'Hold/Min', 'Grabs/Min', 'Score %', 'Hold/Grab', 'Chain %', 'Flaccid %', 'Captures off Handoffs'],
+        'Defense Rates': ['Minutes', 'Tags/Min', 'Returns/Min', 'Pops/Min', 'HoldAgainst/Min', 'K/D', 'Prevent/Return', 'Prevent/HoldAgainst', 'QR %'],
+        'Miscellaneous': ['Minutes', 'Win %', 'Pups', 'Pup %', 'NDPops', 'NRTags']
+      };
 
-    // Global objects for data aggregation
-    let matchData = {};      // Grouped by matchId
-    let teammatesStats = {}; // For "Stats With"
-    let opponentsStats = {}; // For "Stats Against"
-    let allStats = {};       // For "All Stats"
-    let mapStats = {};       // For "Map Stats"
-    let playerTeamMap = {};  // Map of matchId to filtered player's team
-    let mapTotals = {};      // For Map Totals tab
+      // Global objects for data aggregation
+      let matchData = {};      // Grouped by matchId
+      let teammatesStats = {}; // For "Stats With"
+      let opponentsStats = {}; // For "Stats Against"
+      let allStats = {};       // For "All Stats"
+      let mapStats = {};       // For "Map Stats"
+      let playerTeamMap = {};  // Map of matchId to filtered player's team
+      let mapTotals = {};      // For Map Totals tab
 
-    // Save player name and mode from localStorage
-    const savedPlayer = localStorage.getItem('playerName');
-    if (savedPlayer) { document.getElementById('playerName').value = savedPlayer; }
-    const savedMode = localStorage.getItem('darkMode');
-    if (savedMode === 'false') {
-      document.body.classList.add('light-mode');
-      document.getElementById('modeToggle').textContent = 'Dark Mode';
-    }
-
-    // Define the CSV URL
-    const csvUrl = "https://raw.githubusercontent.com/BambiTP/RankedStats/main/stats.csv?v=" + Date.now();
-
-    // Process each chunk of CSV data as it loads
-    Papa.parse(csvUrl, {
-      download: true,
-      header: true,
-      skipEmptyLines: true,
-      worker: true, // Use a web worker for performance
-      chunk: function(results, parser) {
-        // Process each row in the chunk
-        results.data.forEach(row => {
-          const matchId = row.matchId;
-          const player = (row.Player || '').trim();
-          const team = row.Team;
-          if (!matchId || !player || !team) return;
-          if (!matchData[matchId]) {
-            matchData[matchId] = [];
-          }
-          matchData[matchId].push({ ...row, player, team });
-        });
-        // Optionally, update a progress indicator here.
-      },
-      complete: function() {
-        // After all chunks have been processed, run the final aggregation steps.
-        finalizeProcessing();
-        console.log('CSV fully loaded and stats aggregated.');
-      },
-      error: function(err) {
-        console.log('Error parsing CSV: ' + err.message);
+      // Save player name and mode from localStorage
+      const playerNameInput = document.getElementById('playerName');
+      const savedPlayer = localStorage.getItem('playerName');
+      if (savedPlayer && playerNameInput) {
+        playerNameInput.value = savedPlayer;
       }
-    });
+      const savedMode = localStorage.getItem('darkMode');
+      if (savedMode === 'false') {
+        document.body.classList.add('light-mode');
+        document.getElementById('modeToggle').textContent = 'Dark Mode';
+      }
 
-    // Finalize processing after all CSV data is loaded.
-    function finalizeProcessing() {
-      // Process matches to build aggregations using the aggregated matchData
-      processMatchData();
-      // Compute map stats and totals
-      computeMapStats();
-      computeMapTotals();
-      // Compute derived and summary stats for all datasets
-      computeDerivedAndSummary(teammatesStats);
-      computeDerivedAndSummary(opponentsStats);
-      computeDerivedAndSummary(allStats);
-      // Render all sub-tabs in the UI
-      renderAll();
-    }
+      // Define the CSV URL
+      const csvUrl = "https://raw.githubusercontent.com/BambiTP/RankedStats/main/stats.csv?v=" + Date.now();
 
-    // Process matchData to build aggregates for teammatesStats, opponentsStats, and allStats.
-    function processMatchData() {
-      // Process each match
-      Object.entries(matchData).forEach(([matchId, players]) => {
-        // --- Build aggregates for "Stats With" if player exists in match ---
-        const playerFilter = document.getElementById('playerName').value.trim().toLowerCase();
-        const playerEntry = players.find(p => p.player.toLowerCase() === playerFilter);
-        if (playerEntry) {
-          playerTeamMap[matchId] = playerEntry.team;
-          const sameTeam = players.filter(p => p.team === playerEntry.team);
-          const oppTeam = players.filter(p => p.team !== playerEntry.team);
+      // Process each chunk of CSV data as it loads
+      Papa.parse(csvUrl, {
+        download: true,
+        header: true,
+        skipEmptyLines: true,
+        worker: true, // Use a web worker for performance
+        chunk: function(results, parser) {
+          // Process each row in the chunk
+          results.data.forEach(row => {
+            const matchId = row.matchId;
+            const player = (row.Player || '').trim();
+            const team = row.Team;
+            if (!matchId || !player || !team) return;
+            if (!matchData[matchId]) {
+              matchData[matchId] = [];
+            }
+            matchData[matchId].push({ ...row, player, team });
+          });
+          // Optionally, update a progress indicator here.
+        },
+        complete: function() {
+          // After all chunks have been processed, run the final aggregation steps.
+          finalizeProcessing();
+          console.log('CSV fully loaded and stats aggregated.');
+        },
+        error: function(err) {
+          console.log('Error parsing CSV: ' + err.message);
+        }
+      });
+
+      // Finalize processing after all CSV data is loaded.
+      function finalizeProcessing() {
+        processMatchData();
+        computeMapStats();
+        computeMapTotals();
+        computeDerivedAndSummary(teammatesStats);
+        computeDerivedAndSummary(opponentsStats);
+        computeDerivedAndSummary(allStats);
+        renderAll();
+      }
+
+      // Process matchData to build aggregates for teammatesStats, opponentsStats, and allStats.
+      function processMatchData() {
+        Object.entries(matchData).forEach(([matchId, players]) => {
+          // Build aggregates for "Stats With" if player exists in match.
+          const playerFilter = playerNameInput.value.trim().toLowerCase();
+          const playerEntry = players.find(p => p.player.toLowerCase() === playerFilter);
+          if (playerEntry) {
+            playerTeamMap[matchId] = playerEntry.team;
+            const sameTeam = players.filter(p => p.team === playerEntry.team);
+            const oppTeam = players.filter(p => p.team !== playerEntry.team);
+            const capsFor = sameTeam.reduce((a, p) => a + parseInt(p.Captures || 0, 10), 0);
+            const capsAgainst = oppTeam.reduce((a, p) => a + parseInt(p.Captures || 0, 10), 0);
+            if (capsFor !== capsAgainst) {
+              const result = capsFor > capsAgainst ? 'win' : 'loss';
+              sameTeam.forEach(p => {
+                const norm = p.player.trim().toLowerCase();
+                const minutes = parseFloat(p.Minutes) || 0;
+                if (!teammatesStats[norm]) {
+                  teammatesStats[norm] = {
+                    canonicalName: p.player,
+                    maxIndividualMinutes: minutes,
+                    Games: 0, Wins: 0, Losses: 0, CapsFor: 0, CapsAgainst: 0, Minutes: 0,
+                    Totals: Object.fromEntries(rawStats.map(stat => [stat, 0]))
+                  };
+                } else if (minutes > teammatesStats[norm].maxIndividualMinutes) {
+                  teammatesStats[norm].canonicalName = p.player;
+                  teammatesStats[norm].maxIndividualMinutes = minutes;
+                }
+                const stats = teammatesStats[norm];
+                stats.Games++;
+                stats[result === 'win' ? 'Wins' : 'Losses']++;
+                stats.CapsFor += capsFor;
+                stats.CapsAgainst += capsAgainst;
+                rawStats.forEach(stat => {
+                  stats.Totals[stat] += parseFloat(p[stat] || 0);
+                });
+                stats.Minutes += minutes;
+              });
+              oppTeam.forEach(p => {
+                const norm = p.player.trim().toLowerCase();
+                const minutes = parseFloat(p.Minutes) || 0;
+                if (!opponentsStats[norm]) {
+                  opponentsStats[norm] = {
+                    canonicalName: p.player,
+                    maxIndividualMinutes: minutes,
+                    Games: 0, Wins: 0, Losses: 0, CapsFor: 0, CapsAgainst: 0, Minutes: 0,
+                    Totals: Object.fromEntries(rawStats.map(stat => [stat, 0]))
+                  };
+                } else if (minutes > opponentsStats[norm].maxIndividualMinutes) {
+                  opponentsStats[norm].canonicalName = p.player;
+                  opponentsStats[norm].maxIndividualMinutes = minutes;
+                }
+                const stats = opponentsStats[norm];
+                stats.Games++;
+                stats[result === 'loss' ? 'Wins' : 'Losses']++;
+                stats.CapsFor += capsAgainst;
+                stats.CapsAgainst += capsFor;
+                rawStats.forEach(stat => {
+                  stats.Totals[stat] += parseFloat(p[stat] || 0);
+                });
+                stats.Minutes += minutes;
+              });
+            }
+          }
+
+          // Build aggregates for "All Stats" across all matches.
+          let teams = {};
+          players.forEach(p => {
+            teams[p.team] = (teams[p.team] || 0) + parseInt(p.Captures || 0, 10);
+          });
+          const teamNames = Object.keys(teams);
+          if (teamNames.length === 2 && teams[teamNames[0]] !== teams[teamNames[1]]) {
+            const winningTeam = teams[teamNames[0]] > teams[teamNames[1]] ? teamNames[0] : teamNames[1];
+            players.forEach(p => {
+              const norm = p.player.trim().toLowerCase();
+              const minutes = parseFloat(p.Minutes) || 0;
+              if (!allStats[norm]) {
+                allStats[norm] = {
+                  canonicalName: p.player,
+                  maxIndividualMinutes: minutes,
+                  Games: 0, Wins: 0, Losses: 0, CapsFor: 0, CapsAgainst: 0, Minutes: 0,
+                  Totals: Object.fromEntries(rawStats.map(stat => [stat, 0]))
+                };
+              } else if (minutes > allStats[norm].maxIndividualMinutes) {
+                allStats[norm].canonicalName = p.player;
+                allStats[norm].maxIndividualMinutes = minutes;
+              }
+              const stats = allStats[norm];
+              stats.Games++;
+              if (p.team === winningTeam) { stats.Wins++; } else { stats.Losses++; }
+              const teamCapsFor = teams[p.team];
+              const teamCapsAgainst = teams[p.team === teamNames[0] ? teamNames[1] : teamNames[0]];
+              stats.CapsFor += teamCapsFor;
+              stats.CapsAgainst += teamCapsAgainst;
+              rawStats.forEach(stat => {
+                stats.Totals[stat] += parseFloat(p[stat] || 0);
+              });
+              stats.Minutes += minutes;
+            });
+          }
+        });
+      }
+
+      // Compute derived and summary stats for a given dataset.
+      function computeDerivedAndSummary(dataset) {
+        Object.values(dataset).forEach(stats => {
+          stats.Derived = {};
+          Object.entries(derivedStats).forEach(([label, [num, den]]) => {
+            const numerator = stats[num] ?? stats.Totals[num] ?? 0;
+            const denominator = stats[den] ?? stats.Totals[den] ?? 0;
+            stats.Derived[label] = denominator ? numerator / denominator : 0;
+          });
+          stats.Summary = {
+            Minutes: stats.Minutes,
+            Wins: stats.Wins,
+            Losses: stats.Losses,
+            "Win %": stats.Games ? (stats.Wins / stats.Games * 100) : 0,
+            "+/-": stats.CapsFor - stats.CapsAgainst,
+            Tags: stats.Totals["Tags"] || 0,
+            Pops: stats.Totals["Pops"] || 0,
+            Grabs: stats.Totals["Grabs"] || 0,
+            Drops: stats.Totals["Drops"] || 0,
+            Hold: stats.Totals["Hold"] || 0,
+            Caps: stats.Totals["Captures"] || 0,
+            Prevent: stats.Totals["Prevent"] || 0,
+            Returns: stats.Totals["Returns"] || 0
+          };
+        });
+      }
+
+      // Compute Map Stats for the filtered player's matches (grouped by "mapName")
+      function computeMapStats() {
+        mapStats = {};
+        const playerFilter = playerNameInput.value.trim().toLowerCase();
+        Object.entries(matchData).forEach(([matchId, players]) => {
+          const playerRow = players.find(p => p.player.toLowerCase() === playerFilter);
+          if (!playerRow) return;
+          const mapName = playerRow.mapName;
+          if (!mapName) return;
+          const sameTeam = players.filter(p => p.team === playerRow.team);
+          const oppTeam = players.filter(p => p.team !== playerRow.team);
           const capsFor = sameTeam.reduce((a, p) => a + parseInt(p.Captures || 0, 10), 0);
           const capsAgainst = oppTeam.reduce((a, p) => a + parseInt(p.Captures || 0, 10), 0);
-          if (capsFor !== capsAgainst) {
-            const result = capsFor > capsAgainst ? 'win' : 'loss';
-            sameTeam.forEach(p => {
-              const norm = p.player.trim().toLowerCase();
-              const minutes = parseFloat(p.Minutes) || 0;
-              if (!teammatesStats[norm]) {
-                teammatesStats[norm] = {
-                  canonicalName: p.player,
-                  maxIndividualMinutes: minutes,
-                  Games: 0, Wins: 0, Losses: 0, CapsFor: 0, CapsAgainst: 0, Minutes: 0,
-                  Totals: Object.fromEntries(rawStats.map(stat => [stat, 0]))
-                };
-              } else if (minutes > teammatesStats[norm].maxIndividualMinutes) {
-                teammatesStats[norm].canonicalName = p.player;
-                teammatesStats[norm].maxIndividualMinutes = minutes;
-              }
-              const stats = teammatesStats[norm];
-              stats.Games++;
-              stats[result === 'win' ? 'Wins' : 'Losses']++;
-              stats.CapsFor += capsFor;
-              stats.CapsAgainst += capsAgainst;
-              rawStats.forEach(stat => {
-                stats.Totals[stat] += parseFloat(p[stat] || 0);
-              });
-              stats.Minutes += minutes;
+          if (capsFor === capsAgainst) return;
+          const result = capsFor > capsAgainst ? 'win' : 'loss';
+          if (!mapStats[mapName]) {
+            mapStats[mapName] = {
+              Games: 0, Wins: 0, Losses: 0, CapsFor: 0, CapsAgainst: 0, Minutes: 0,
+              Totals: Object.fromEntries(rawStats.map(stat => [stat, 0]))
+            };
+          }
+          const stats = mapStats[mapName];
+          stats.Games++;
+          if (result === 'win') { stats.Wins++; } else { stats.Losses++; }
+          stats.CapsFor += capsFor;
+          stats.CapsAgainst += capsAgainst;
+          rawStats.forEach(stat => {
+            stats.Totals[stat] += parseFloat(playerRow[stat] || 0);
+          });
+          stats.Minutes += parseFloat(playerRow.Minutes || 0);
+        });
+        computeDerivedAndSummary(mapStats);
+      }
+
+      // Compute Map Totals for the Map Totals tab.
+      function computeMapTotals() {
+        mapTotals = {};
+        Object.values(matchData).forEach(match => {
+          if (!match.length) return;
+          const mapName = match[0].mapName;
+          if (!mapName) return;
+          if (!mapTotals[mapName]) {
+            mapTotals[mapName] = {
+              TimesPlayed: 0,
+              TotalMinutes: 0,
+              TotalPrevent: 0,
+              TotalGrabs: 0,
+              TotalHold: 0,
+              TotalCaptures: 0,
+            };
+          }
+          mapTotals[mapName].TimesPlayed++;
+          match.forEach(p => {
+            mapTotals[mapName].TotalMinutes += parseFloat(p.Minutes || 0);
+            mapTotals[mapName].TotalPrevent += parseFloat(p.Prevent || 0);
+            mapTotals[mapName].TotalGrabs += parseFloat(p.Grabs || 0);
+            mapTotals[mapName].TotalHold += parseFloat(p.Hold || 0);
+            mapTotals[mapName].TotalCaptures += parseFloat(p.Captures || 0);
+          });
+        });
+      }
+
+      // Render functions for sub-tabs (example for All Stats)
+      function createSubTab(tabContainer, outputContainer, label, statsCols, dataset, isSummary, rowHeader = "Player") {
+        const button = document.createElement('button');
+        button.className = 'tab-button';
+        button.textContent = label;
+        const content = document.createElement('div');
+        content.className = 'tab-content';
+        let html = '<table><thead><tr>';
+        let headers = [rowHeader].concat(statsCols);
+        headers.forEach((h, i) => {
+          html += `<th data-col-index="${i}">${h}</th>`;
+        });
+        html += '</tr></thead><tbody>';
+        const minFilter = rowHeader === "Player" ? (parseFloat(document.getElementById('minMinutes').value) || 0) : 0;
+        Object.entries(dataset).forEach(([norm, data]) => {
+          if (rowHeader === "Player" && data.Minutes < minFilter) return;
+          const displayName = data.canonicalName || norm;
+          html += '<tr>';
+          html += `<td>${displayName}</td>`;
+          if (isSummary) {
+            const summary = data.Summary;
+            headers.slice(1).forEach(col => {
+              const val = summary[col] !== undefined ? summary[col] : 0;
+              html += `<td data-sort="${val}">${Number(val).toFixed(2)}</td>`;
             });
-            oppTeam.forEach(p => {
-              const norm = p.player.trim().toLowerCase();
-              const minutes = parseFloat(p.Minutes) || 0;
-              if (!opponentsStats[norm]) {
-                opponentsStats[norm] = {
-                  canonicalName: p.player,
-                  maxIndividualMinutes: minutes,
-                  Games: 0, Wins: 0, Losses: 0, CapsFor: 0, CapsAgainst: 0, Minutes: 0,
-                  Totals: Object.fromEntries(rawStats.map(stat => [stat, 0]))
-                };
-              } else if (minutes > opponentsStats[norm].maxIndividualMinutes) {
-                opponentsStats[norm].canonicalName = p.player;
-                opponentsStats[norm].maxIndividualMinutes = minutes;
+          } else {
+            statsCols.forEach(col => {
+              let value = 0;
+              if (col in data.Totals) {
+                value = data.Totals[col];
+              } else if (col in data) {
+                value = data[col];
+              } else if (data.Derived && col in data.Derived) {
+                value = data.Derived[col];
               }
-              const stats = opponentsStats[norm];
-              stats.Games++;
-              stats[result === 'loss' ? 'Wins' : 'Losses']++;
-              stats.CapsFor += capsAgainst;
-              stats.CapsAgainst += capsFor;
-              rawStats.forEach(stat => {
-                stats.Totals[stat] += parseFloat(p[stat] || 0);
-              });
-              stats.Minutes += minutes;
+              const num = typeof value === 'number' ? value : parseFloat(value) || 0;
+              html += `<td data-sort="${num}">${Number(num).toFixed(2)}</td>`;
             });
           }
-        }
-
-        // --- Build aggregates for "All Stats" across all matches ---
-        let teams = {};
-        players.forEach(p => {
-          teams[p.team] = (teams[p.team] || 0) + parseInt(p.Captures || 0, 10);
+          html += '</tr>';
         });
-        const teamNames = Object.keys(teams);
-        if (teamNames.length === 2 && teams[teamNames[0]] !== teams[teamNames[1]]) {
-          const winningTeam = teams[teamNames[0]] > teams[teamNames[1]] ? teamNames[0] : teamNames[1];
-          players.forEach(p => {
-            const norm = p.player.trim().toLowerCase();
-            const minutes = parseFloat(p.Minutes) || 0;
-            if (!allStats[norm]) {
-              allStats[norm] = {
-                canonicalName: p.player,
-                maxIndividualMinutes: minutes,
-                Games: 0, Wins: 0, Losses: 0, CapsFor: 0, CapsAgainst: 0, Minutes: 0,
-                Totals: Object.fromEntries(rawStats.map(stat => [stat, 0]))
-              };
-            } else if (minutes > allStats[norm].maxIndividualMinutes) {
-              allStats[norm].canonicalName = p.player;
-              allStats[norm].maxIndividualMinutes = minutes;
-            }
-            const stats = allStats[norm];
-            stats.Games++;
-            if (p.team === winningTeam) { stats.Wins++; } else { stats.Losses++; }
-            const teamCapsFor = teams[p.team];
-            const teamCapsAgainst = teams[p.team === teamNames[0] ? teamNames[1] : teamNames[0]];
-            stats.CapsFor += teamCapsFor;
-            stats.CapsAgainst += teamCapsAgainst;
-            rawStats.forEach(stat => {
-              stats.Totals[stat] += parseFloat(p[stat] || 0);
+        html += '</tbody></table>';
+        content.innerHTML = html;
+        tabContainer.appendChild(button);
+        outputContainer.appendChild(content);
+        setupCustomTableSort(content.querySelector('table'));
+        button.addEventListener('click', () => {
+          Array.from(tabContainer.children).forEach(btn => btn.classList.remove('active'));
+          Array.from(outputContainer.children).forEach(cont => cont.classList.remove('active'));
+          button.classList.add('active');
+          content.classList.add('active');
+        });
+        if (!tabContainer.querySelector('.tab-button.active')) {
+          button.classList.add('active');
+          content.classList.add('active');
+        }
+      }
+
+      function renderAllSubTabs() {
+        const tabsAll = document.getElementById('tabsAll');
+        const outputAll = document.getElementById('outputAll');
+        tabsAll.innerHTML = '';
+        outputAll.innerHTML = '';
+        const summaryHeaders = ["Minutes", "Wins", "Losses", "Win %", "+/-", "Tags", "Pops", "Grabs", "Drops", "Hold", "Caps", "Prevent", "Returns"];
+        createSubTab(tabsAll, outputAll, "Summary", summaryHeaders, allStats, true);
+        Object.entries(statCategories).forEach(([label, stats]) => {
+          createSubTab(tabsAll, outputAll, label, stats, allStats, false);
+        });
+      }
+
+      // Placeholder render functions for Map Stats, Stats With, and Stats Against would follow similarly.
+      function renderMapSubTabs() {
+        // Your implementation here
+      }
+      function renderSubTabs(dataset, tabsId, outputId) {
+        // Your implementation here
+      }
+
+      function renderAll() {
+        renderAllSubTabs();
+        renderMapSubTabs();
+        renderSubTabs(teammatesStats, 'tabsWith', 'outputWith');
+        renderSubTabs(opponentsStats, 'tabsAgainst', 'outputAgainst');
+      }
+
+      // Sorting functionality for table headers.
+      function setupCustomTableSort(table) {
+        const headers = table.querySelectorAll("th");
+        headers.forEach(header => {
+          header.style.cursor = "pointer";
+          header.addEventListener("click", function() {
+            const colIndex = parseInt(header.getAttribute("data-col-index"), 10);
+            let sortOrder = header.getAttribute("data-sort-order") || "asc";
+            sortOrder = sortOrder === "asc" ? "desc" : "asc";
+            header.setAttribute("data-sort-order", sortOrder);
+            const tbody = table.querySelector("tbody");
+            const rows = Array.from(tbody.querySelectorAll("tr"));
+            rows.sort((a, b) => {
+              const cellA = a.querySelectorAll("td")[colIndex];
+              const cellB = b.querySelectorAll("td")[colIndex];
+              const valA = parseFloat(cellA.getAttribute("data-sort"));
+              const valB = parseFloat(cellB.getAttribute("data-sort"));
+              return sortOrder === "asc" ? valA - valB : valB - valA;
             });
-            stats.Minutes += minutes;
+            tbody.innerHTML = "";
+            rows.forEach(row => tbody.appendChild(row));
           });
+        });
+      }
+
+      // Example event listener for the mode toggle button.
+      document.getElementById('modeToggle').addEventListener('click', () => {
+        document.body.classList.toggle('light-mode');
+        const isLight = document.body.classList.contains('light-mode');
+        document.getElementById('modeToggle').textContent = isLight ? 'Dark Mode' : 'Light Mode';
+        localStorage.setItem('darkMode', !isLight);
+      });
+
+      // Event listener for the player name input to save changes and reprocess data.
+      playerNameInput.addEventListener('keyup', (e) => {
+        if (e.key === "Enter") {
+          const val = playerNameInput.value.trim();
+          localStorage.setItem('playerName', val);
+          // Optionally, clear existing tabs and re-run aggregations.
+          ['tabsAll', 'outputAll', 'tabsMap', 'outputMap', 'tabsWith', 'outputWith', 'tabsAgainst', 'outputAgainst']
+            .forEach(id => {
+              document.getElementById(id).innerHTML = '';
+            });
+          // Reset aggregation objects and reprocess using existing CSV data if available.
+          matchData = {};
+          teammatesStats = {};
+          opponentsStats = {};
+          allStats = {};
+          mapStats = {};
+          mapTotals = {};
+          playerTeamMap = {};
+          // In a real scenario, you might re-run the CSV parsing or call finalizeProcessing() here.
         }
       });
-    }
 
-    // Compute derived and summary stats for a given dataset.
-    function computeDerivedAndSummary(dataset) {
-      Object.values(dataset).forEach(stats => {
-        stats.Derived = {};
-        Object.entries(derivedStats).forEach(([label, [num, den]]) => {
-          const numerator = stats[num] ?? stats.Totals[num] ?? 0;
-          const denominator = stats[den] ?? stats.Totals[den] ?? 0;
-          stats.Derived[label] = denominator ? numerator / denominator : 0;
-        });
-        stats.Summary = {
-          Minutes: stats.Minutes,
-          Wins: stats.Wins,
-          Losses: stats.Losses,
-          "Win %": stats.Games ? (stats.Wins / stats.Games * 100) : 0,
-          "+/-": stats.CapsFor - stats.CapsAgainst,
-          Tags: stats.Totals["Tags"] || 0,
-          Pops: stats.Totals["Pops"] || 0,
-          Grabs: stats.Totals["Grabs"] || 0,
-          Drops: stats.Totals["Drops"] || 0,
-          Hold: stats.Totals["Hold"] || 0,
-          Caps: stats.Totals["Captures"] || 0,
-          Prevent: stats.Totals["Prevent"] || 0,
-          Returns: stats.Totals["Returns"] || 0
-        };
-      });
-    }
-
-    // Compute Map Stats for the filtered player's matches (grouped by "mapName")
-    function computeMapStats() {
-      mapStats = {};
-      const playerFilter = document.getElementById('playerName').value.trim().toLowerCase();
-      Object.entries(matchData).forEach(([matchId, players]) => {
-        const playerRow = players.find(p => p.player.toLowerCase() === playerFilter);
-        if (!playerRow) return;
-        const mapName = playerRow.mapName;
-        if (!mapName) return;
-        const sameTeam = players.filter(p => p.team === playerRow.team);
-        const oppTeam = players.filter(p => p.team !== playerRow.team);
-        const capsFor = sameTeam.reduce((a, p) => a + parseInt(p.Captures || 0, 10), 0);
-        const capsAgainst = oppTeam.reduce((a, p) => a + parseInt(p.Captures || 0, 10), 0);
-        if (capsFor === capsAgainst) return;
-        const result = capsFor > capsAgainst ? 'win' : 'loss';
-        if (!mapStats[mapName]) {
-          mapStats[mapName] = {
-            Games: 0, Wins: 0, Losses: 0, CapsFor: 0, CapsAgainst: 0, Minutes: 0,
-            Totals: Object.fromEntries(rawStats.map(stat => [stat, 0]))
-          };
+      // Similarly, add event listener for minutes filter input if needed.
+      document.getElementById('minMinutes').addEventListener('keyup', (e) => {
+        if (e.key === "Enter") {
+          renderAll();
         }
-        const stats = mapStats[mapName];
-        stats.Games++;
-        if (result === 'win') { stats.Wins++; } else { stats.Losses++; }
-        stats.CapsFor += capsFor;
-        stats.CapsAgainst += capsAgainst;
-        rawStats.forEach(stat => {
-          stats.Totals[stat] += parseFloat(playerRow[stat] || 0);
-        });
-        stats.Minutes += parseFloat(playerRow.Minutes || 0);
       });
-      computeDerivedAndSummary(mapStats);
-    }
-
-    // Compute Map Totals for the Map Totals tab.
-    function computeMapTotals() {
-      mapTotals = {};
-      Object.values(matchData).forEach(match => {
-        if (!match.length) return;
-        const mapName = match[0].mapName;
-        if (!mapName) return;
-        if (!mapTotals[mapName]) {
-          mapTotals[mapName] = {
-            TimesPlayed: 0,
-            TotalMinutes: 0,
-            TotalPrevent: 0,
-            TotalGrabs: 0,
-            TotalHold: 0,
-            TotalCaptures: 0,
-          };
-        }
-        mapTotals[mapName].TimesPlayed++;
-        match.forEach(p => {
-          mapTotals[mapName].TotalMinutes += parseFloat(p.Minutes || 0);
-          mapTotals[mapName].TotalPrevent += parseFloat(p.Prevent || 0);
-          mapTotals[mapName].TotalGrabs += parseFloat(p.Grabs || 0);
-          mapTotals[mapName].TotalHold += parseFloat(p.Hold || 0);
-          mapTotals[mapName].TotalCaptures += parseFloat(p.Captures || 0);
-        });
-      });
-    }
-
-    // The remaining functions for rendering the UI (createSubTab, renderAllSubTabs, renderMapSubTabs, renderMapTotalsTab, renderSubTabs, renderAll, setupCustomTableSort, and event listeners)
-    // remain largely unchanged.
-    // ...
-    
-    // For example, here's how you might render the "All Stats" sub-tabs:
-    function renderAllSubTabs() {
-      const tabsAll = document.getElementById('tabsAll');
-      const outputAll = document.getElementById('outputAll');
-      tabsAll.innerHTML = '';
-      outputAll.innerHTML = '';
-      const summaryHeaders = ["Minutes", "Wins", "Losses", "Win %", "+/-", "Tags", "Pops", "Grabs", "Drops", "Hold", "Caps", "Prevent", "Returns"];
-      createSubTab(tabsAll, outputAll, "Summary", summaryHeaders, allStats, true);
-      Object.entries(statCategories).forEach(([label, stats]) => {
-        createSubTab(tabsAll, outputAll, label, stats, allStats, false);
-      });
-    }
-    
-    // (Include the rest of your render functions and event listeners as in your original code)
-    // ...
-
+    });
   </script>
 </body>
 </html>
