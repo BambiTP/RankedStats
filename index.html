@@ -61,7 +61,8 @@
       margin-left: 20px;
     }
     .player-input input[type="text"],
-    .filter-input input[type="number"] {
+    .filter-input input[type="number"],
+    .username-search input[type="text"] {
       padding: 6px 8px;
       border: 1px solid #444;
       border-radius: 4px;
@@ -70,7 +71,8 @@
       font-size: 16px;
     }
     body.light-mode .player-input input[type="text"],
-    body.light-mode .filter-input input[type="number"] {
+    body.light-mode .filter-input input[type="number"],
+    body.light-mode .username-search input[type="text"] {
       background-color: #fff;
       color: #333;
       border: 1px solid #ccc;
@@ -81,6 +83,17 @@
       margin: 20px 0;
       color: inherit;
       font-size: 2rem;
+    }
+    /* Search bar above tables */
+    .username-search {
+      text-align: center;
+      margin: 10px 0;
+    }
+    /* Loading indicator */
+    #loading {
+      text-align: center;
+      margin: 20px;
+      font-size: 20px;
     }
     /* Outer container for stats sections */
     .outer-tabs {
@@ -191,6 +204,17 @@
       background-color: #f1f1f1;
       color: #333;
     }
+    /* Pagination controls */
+    .pagination {
+      margin-top: 10px;
+      text-align: center;
+    }
+    .pagination button {
+      padding: 6px 10px;
+      margin: 0 5px;
+      font-size: 16px;
+      cursor: pointer;
+    }
   </style>
 </head>
 <body>
@@ -214,6 +238,14 @@
       </div>
     </div>
     <button id="modeToggle" class="toggle-button">Light Mode</button>
+  </div>
+
+  <!-- Loading Indicator -->
+  <div id="loading">Loading...</div>
+
+  <!-- Search bar above tables to filter by username -->
+  <div class="username-search">
+    <input type="text" id="usernameSearch" placeholder="Search username to filter..." />
   </div>
   
   <!-- Stats Containers -->
@@ -256,14 +288,13 @@
   </div>
 
   <script>
-    // Define raw and derived stats
+    // --- Global Variables and Configuration ---
     const rawStats = [
       'Captures', 'Grabs', 'Pops', 'Tags', 'Drops', 'Returns', 'Flaccids',
       'Good Handoffs', 'Quick Returns', 'Returns in Base',
       'Pups', 'Pups Available', 'Minutes', 'Hold', 'Prevent', 'Hold Against',
       'KF', 'NDPops', 'NRTags', 'Captures off Handoffs'
     ];
-
     const derivedStats = {
       'Win %': ['Wins', 'Games'],
       'Caps/Min': ['Captures', 'Minutes'],
@@ -284,8 +315,6 @@
       'QR %': ['Quick Returns', 'Returns'],
       'Pup %': ['Pups', 'Pups Available']
     };
-
-    // Category definitions for sub-tabs (excluding Summary)
     const statCategories = {
       'Offense': ['Minutes', 'Grabs', 'Captures', 'Hold', 'Flaccids', 'Good Handoffs', 'Captures off Handoffs'],
       'Defense': ['Minutes', 'Tags', 'Returns', 'Quick Returns', 'Returns in Base', 'Prevent', 'Hold Against', 'KF'],
@@ -293,20 +322,20 @@
       'Defense Rates': ['Minutes', 'Tags/Min', 'Returns/Min', 'Pops/Min', 'HoldAgainst/Min', 'K/D', 'Prevent/Return', 'Prevent/HoldAgainst', 'QR %'],
       'Miscellaneous': ['Minutes', 'Win %', 'Pups', 'Pup %', 'NDPops', 'NRTags']
     };
+    const PAGE_SIZE = 100;  // Number of rows to display per page
 
-    // Global data storage for aggregations
-    let csvData = null;    // Will store the raw CSV data.
+    let csvData = [];      // Accumulate rows as they stream in.
     let matchData = {};      // Grouped by matchId
     let teammatesStats = {}; // For "Stats With"
     let opponentsStats = {}; // For "Stats Against"
     let allStats = {};       // For "All Stats"
     let mapStats = {};       // For "Map Stats" (aggregated by mapName)
     let playerTeamMap = {};  // Map of matchId to filtered player's team
+    let mapTotals = {};      // Totals for Map Totals tab
 
-    // NEW: Global variable to store map totals for the new Map Totals tab
-    let mapTotals = {};
+    let playerDebounceTimer = null;
 
-    // Load saved player name and mode from localStorage
+    // --- Load saved settings ---
     const savedPlayer = localStorage.getItem('playerName');
     if (savedPlayer) {
       document.getElementById('playerName').value = savedPlayer;
@@ -317,24 +346,33 @@
       document.getElementById('modeToggle').textContent = 'Dark Mode';
     }
 
-    // Load CSV automatically from GitHub using the raw URL.
+    // --- CSV Streaming via PapaParse ---
     const csvUrl = "https://raw.githubusercontent.com/BambiTP/RankedStats/main/stats.csv?v=" + Date.now();
     Papa.parse(csvUrl, {
       download: true,
       header: true,
       skipEmptyLines: true,
-      complete: res => {
-        csvData = res.data;  // Save the original CSV data.
+      step: function(row) {
+        csvData.push(row.data);
+      },
+      complete: () => {
         processCSVData(csvData);
+        document.getElementById('loading').style.display = 'none';
       },
       error: err => console.log('Error parsing CSV: ' + err.message)
     });
 
-    // Process CSV data (builds matchData and aggregates stats)
+    // --- Data Processing Functions ---
     function processCSVData(data) {
-      // Reset matchData (and ensure it's not accumulating duplicates)
+      // Reset data structures
       matchData = {};
-      
+      teammatesStats = {};
+      opponentsStats = {};
+      allStats = {};
+      mapStats = {};
+      mapTotals = {};
+      playerTeamMap = {};
+
       // Group data by matchId
       data.forEach(row => {
         const matchId = row.matchId;
@@ -345,7 +383,6 @@
         matchData[matchId].push({ ...row, player, team });
       });
 
-      // Filter aggregation for matches including the filtered player
       const playerFilter = document.getElementById('playerName').value.trim().toLowerCase();
       const relevantGames = [];
       Object.entries(matchData).forEach(([matchId, players]) => {
@@ -356,7 +393,7 @@
         }
       });
 
-      // Aggregate "Stats With" and "Stats Against"
+      // Aggregate Stats With and Against
       relevantGames.forEach(({ matchId, team }) => {
         const players = matchData[matchId];
         const sameTeam = players.filter(p => p.team === team);
@@ -417,7 +454,7 @@
         });
       });
 
-      // Aggregate "All Stats" across matches
+      // Aggregate All Stats across matches
       Object.entries(matchData).forEach(([matchId, players]) => {
         let teams = {};
         players.forEach(p => {
@@ -456,23 +493,20 @@
 
       // Aggregate Map Stats for the filtered player's matches (grouped by "mapName")
       computeMapStats();
-
-      // NEW: Compute the totals across maps for the Map Totals tab.
-      // For each unique match, sum each player's Minutes, Prevent, Grabs, Captures, and Hold.
+      // Compute map totals for the Map Totals tab.
       computeMapTotals();
 
       // Compute derived and summary stats for each aggregation
       computeDerivedAndSummary(teammatesStats);
       computeDerivedAndSummary(opponentsStats);
       computeDerivedAndSummary(allStats);
-      // Note: mapStats already had derived stats computed in computeMapStats()
+      // mapStats already has derived stats computed inside computeMapStats()
 
-      // Render sub-tabs for each container
+      // Render all tabs
       renderAll();
       console.log('Stats aggregated.');
     }
 
-    // Compute derived and summary stats for each dataset.
     function computeDerivedAndSummary(dataset) {
       Object.values(dataset).forEach(stats => {
         stats.Derived = {};
@@ -499,9 +533,8 @@
       });
     }
 
-    // Compute Map Stats for the filtered player's matches (grouped by "mapName")
     function computeMapStats() {
-      mapStats = {}; // Reset
+      mapStats = {};
       const playerFilter = document.getElementById('playerName').value.trim().toLowerCase();
       Object.entries(matchData).forEach(([matchId, players]) => {
         const playerRow = players.find(p => p.player.toLowerCase() === playerFilter);
@@ -533,15 +566,10 @@
       computeDerivedAndSummary(mapStats);
     }
 
-    // NEW: Compute mapTotals aggregation for the Map Totals tab.
-    // For each unique match in matchData:
-    // - Sum all players' Minutes, Prevent, Grabs, Captures, and Hold.
-    // - Increment the TimesPlayed count.
     function computeMapTotals() {
-      mapTotals = {}; // Reset
+      mapTotals = {};
       Object.values(matchData).forEach(match => {
         if (match.length === 0) return;
-        // Assume the map name is the same for every row in the match.
         const mapName = match[0].mapName;
         if (!mapName) return;
         if (!mapTotals[mapName]) {
@@ -554,7 +582,6 @@
             TotalCaptures: 0,
           };
         }
-        // For each match, count one game played on that map.
         mapTotals[mapName].TimesPlayed++;
         match.forEach(p => {
           mapTotals[mapName].TotalMinutes += parseFloat(p["Minutes"] || 0);
@@ -566,55 +593,105 @@
       });
     }
 
-    // Generic function to create sub-tabs (for players or maps)
-    // rowHeader defaults to "Player"; for Map Stats set it to "Map"
+    // --- UI Rendering Functions with Pagination and Global Filtering ---
     function createSubTab(tabContainer, outputContainer, label, statsCols, dataset, isSummary, rowHeader = "Player") {
       const button = document.createElement('button');
       button.className = 'tab-button';
       button.textContent = label;
       const content = document.createElement('div');
       content.className = 'tab-content';
-      let html = '<table><thead><tr>';
-      let headers = [rowHeader].concat(statsCols);
-      headers.forEach((h, i) => {
-        html += `<th data-col-index="${i}">${h}</th>`;
+      
+      // Compute the full array from dataset (applying the minMinutes filter if applicable)
+      const originalData = Object.entries(dataset).filter(([norm, data]) => {
+        const minFilter = rowHeader === "Player" ? (parseFloat(document.getElementById('minMinutes').value) || 0) : 0;
+        return rowHeader !== "Player" || data.Minutes >= minFilter;
       });
-      html += '</tr></thead><tbody>';
-      // Get the minimum minutes filter value (only applies if rowHeader is "Player")
-      const minFilter = rowHeader === "Player" ? (parseFloat(document.getElementById('minMinutes').value) || 0) : 0;
-      Object.entries(dataset).forEach(([norm, data]) => {
-        // Only filter for player rows (not for Map stats)
-        if (rowHeader === "Player" && data.Minutes < minFilter) return;
-        const displayName = data.canonicalName || norm;
-        html += '<tr>';
-        html += `<td>${displayName}</td>`;
-        if (isSummary) {
-          const summary = data.Summary;
-          headers.slice(1).forEach(col => {
-            const val = summary[col] !== undefined ? summary[col] : 0;
-            html += `<td data-sort="${val}">${Number(val).toFixed(2)}</td>`;
-          });
-        } else {
-          statsCols.forEach(col => {
-            let value = 0;
-            if (col in data.Totals) {
-              value = data.Totals[col];
-            } else if (col in data) {
-              value = data[col];
-            } else if (data.Derived && col in data.Derived) {
-              value = data.Derived[col];
-            }
-            const num = typeof value === 'number' ? value : parseFloat(value) || 0;
-            html += `<td data-sort="${num}">${Number(num).toFixed(2)}</td>`;
+      originalData.sort((a, b) => a[1].canonicalName.localeCompare(b[1].canonicalName));
+      
+      let currentPage = 0;
+      let currentFilter = ""; // current username search filter
+
+      function renderPage() {
+        // Filter the full dataset by username search (if provided)
+        const filteredData = currentFilter ?
+          originalData.filter(([, data]) => data.canonicalName.toLowerCase().includes(currentFilter)) :
+          originalData;
+          
+        let html = '<table><thead><tr>';
+        html += `<th data-col-index="0">#</th>`;
+        let headers = [rowHeader].concat(statsCols);
+        headers.forEach((h, i) => {
+          html += `<th data-col-index="${i+1}">${h}</th>`;
+        });
+        html += '</tr></thead><tbody>';
+        const start = currentPage * PAGE_SIZE;
+        const pageData = filteredData.slice(start, start + PAGE_SIZE);
+        pageData.forEach(([, data], index) => {
+          const rowNumber = start + index + 1;
+          const displayName = data.canonicalName || '';
+          html += '<tr>';
+          html += `<td>${rowNumber}</td>`;
+          if (isSummary) {
+            const summary = data.Summary;
+            headers.slice(1).forEach(col => {
+              const val = summary[col] !== undefined ? summary[col] : 0;
+              html += `<td data-sort="${val}">${Number(val).toFixed(2)}</td>`;
+            });
+          } else {
+            statsCols.forEach(col => {
+              let value = 0;
+              if (col in data.Totals) {
+                value = data.Totals[col];
+              } else if (col in data) {
+                value = data[col];
+              } else if (data.Derived && col in data.Derived) {
+                value = data.Derived[col];
+              }
+              const num = typeof value === 'number' ? value : parseFloat(value) || 0;
+              html += `<td data-sort="${num}">${Number(num).toFixed(2)}</td>`;
+            });
+          }
+          html += '</tr>';
+        });
+        html += '</tbody></table>';
+        // Pagination controls
+        html += `<div class="pagination">`;
+        if (currentPage > 0) {
+          html += `<button class="prev-page">Previous</button>`;
+        }
+        if ((currentPage + 1) * PAGE_SIZE < filteredData.length) {
+          html += `<button class="next-page">Next</button>`;
+        }
+        html += `</div>`;
+        content.innerHTML = html;
+        setupCustomTableSort(content.querySelector('table'));
+        const prevButton = content.querySelector('.prev-page');
+        if (prevButton) {
+          prevButton.addEventListener('click', () => {
+            currentPage--;
+            renderPage();
           });
         }
-        html += '</tr>';
-      });
-      html += '</tbody></table>';
-      content.innerHTML = html;
+        const nextButton = content.querySelector('.next-page');
+        if (nextButton) {
+          nextButton.addEventListener('click', () => {
+            currentPage++;
+            renderPage();
+          });
+        }
+      }
+      
+      // Expose a method to update the filter and re-render
+      content.updateTable = function(filterTerm) {
+        currentFilter = filterTerm.toLowerCase();
+        currentPage = 0;
+        renderPage();
+      };
+
+      renderPage();
+
       tabContainer.appendChild(button);
       outputContainer.appendChild(content);
-      setupCustomTableSort(content.querySelector('table'));
       button.addEventListener('click', () => {
         Array.from(tabContainer.children).forEach(btn => btn.classList.remove('active'));
         Array.from(outputContainer.children).forEach(cont => cont.classList.remove('active'));
@@ -627,7 +704,6 @@
       }
     }
 
-    // Render sub-tabs for "All Stats"
     function renderAllSubTabs() {
       const tabsAll = document.getElementById('tabsAll');
       const outputAll = document.getElementById('outputAll');
@@ -640,7 +716,6 @@
       });
     }
 
-    // Render sub-tabs for Map Stats (with "Map" as row header)
     function renderMapSubTabs() {
       const tabsMap = document.getElementById('tabsMap');
       const outputMap = document.getElementById('outputMap');
@@ -651,26 +726,17 @@
       Object.entries(statCategories).forEach(([label, stats]) => {
         createSubTab(tabsMap, outputMap, label, stats, mapStats, false, "Map");
       });
-      // NEW: Append the updated Map Totals tab.
       renderMapTotalsTab();
     }
 
-    // NEW: Render Map Totals Sub-Tab for Maps.
-    // Columns: Map, Games Played, Total Minutes, Prevent/Min, Grabs/Min, Captures/Min, Hold/Min.
     function renderMapTotalsTab() {
       const tabsMap = document.getElementById('tabsMap');
       const outputMap = document.getElementById('outputMap');
-
-      // Create the sub-tab button for "Map Totals"
       const button = document.createElement('button');
       button.className = 'tab-button';
       button.textContent = "Map Totals";
-
-      // Create the corresponding content container
       const content = document.createElement('div');
       content.className = 'tab-content';
-
-      // Build the table header and rows
       let html = '<table><thead><tr>';
       html += '<th data-col-index="0">Map</th>';
       html += '<th data-col-index="1">Games Played</th>';
@@ -681,7 +747,6 @@
       html += '<th data-col-index="6">Hold/Min</th>';
       html += '</tr></thead><tbody>';
       Object.entries(mapTotals).forEach(([mapName, stats]) => {
-        // Calculate rates based on the total minutes; avoid division by zero.
         const minutes = stats.TotalMinutes;
         const preventRate = minutes ? stats.TotalPrevent / minutes : 0;
         const grabsRate = minutes ? stats.TotalGrabs / minutes : 0;
@@ -699,15 +764,9 @@
       });
       html += '</tbody></table>';
       content.innerHTML = html;
-
-      // Append the new tab button and content to the maps containers.
       tabsMap.appendChild(button);
       outputMap.appendChild(content);
-
-      // Set up sorting for the new table.
       setupCustomTableSort(content.querySelector('table'));
-
-      // Configure the sub-tab’s click behavior.
       button.addEventListener('click', () => {
         Array.from(tabsMap.children).forEach(btn => btn.classList.remove('active'));
         Array.from(outputMap.children).forEach(cont => cont.classList.remove('active'));
@@ -716,7 +775,6 @@
       });
     }
 
-    // Render sub-tabs for Stats With and Stats Against
     function renderSubTabs(dataset, tabsId, outputId) {
       const tabsContainer = document.getElementById(tabsId);
       const outputContainer = document.getElementById(outputId);
@@ -729,7 +787,6 @@
       });
     }
 
-    // Helper function to render all tables
     function renderAll() {
       renderAllSubTabs();
       renderMapSubTabs();
@@ -737,7 +794,7 @@
       renderSubTabs(opponentsStats, 'tabsAgainst', 'outputAgainst');
     }
 
-    // Sorting functionality for table headers.
+    // --- Table Sorting ---
     function setupCustomTableSort(table) {
       const headers = table.querySelectorAll("th");
       headers.forEach(header => {
@@ -762,7 +819,7 @@
       });
     }
 
-    // Top-level Navigation event handlers
+    // --- Top-level Navigation Event Handlers ---
     document.getElementById('statsAllNav').addEventListener('click', () => {
       document.getElementById('statsAllNav').classList.add('active');
       document.getElementById('statsMapNav').classList.remove('active');
@@ -804,7 +861,7 @@
       document.getElementById('statsAgainstContainer').style.display = '';
     });
 
-    // Dark/Light Mode Toggle with persistence
+    // --- Mode Toggle ---
     document.getElementById('modeToggle').addEventListener('click', () => {
       document.body.classList.toggle('light-mode');
       const isLight = document.body.classList.contains('light-mode');
@@ -812,17 +869,14 @@
       localStorage.setItem('darkMode', !isLight);
     });
 
-    // Save player input to localStorage and re-run aggregation when "Enter" is pressed.
-    document.getElementById('playerName').addEventListener('keyup', (e) => {
-      if (e.key === "Enter") {
+    // --- Debounced Player Input & Re-aggregation ---
+    document.getElementById('playerName').addEventListener('input', () => {
+      clearTimeout(playerDebounceTimer);
+      playerDebounceTimer = setTimeout(() => {
         const val = document.getElementById('playerName').value.trim();
         localStorage.setItem('playerName', val);
-        // Clear previous tables/tabs from all containers.
         ['tabsAll', 'outputAll', 'tabsMap', 'outputMap', 'tabsWith', 'outputWith', 'tabsAgainst', 'outputAgainst']
-          .forEach(id => {
-            document.getElementById(id).innerHTML = '';
-          });
-        // Reset all aggregation objects
+          .forEach(id => { document.getElementById(id).innerHTML = ''; });
         matchData = {};
         teammatesStats = {};
         opponentsStats = {};
@@ -830,15 +884,24 @@
         mapStats = {};
         mapTotals = {};
         playerTeamMap = {};
-        // Re-run processCSVData using the original CSV data (stored in csvData)
         processCSVData(csvData);
-      }
+      }, 300);
     });
 
-    // Event listener for the minutes filter input to re-render tables on Enter
+    // Re-render tables when minMinutes input changes (on Enter)
     document.getElementById('minMinutes').addEventListener('keyup', (e) => {
       if (e.key === "Enter") {
         renderAll();
+      }
+    });
+
+    // --- Username Search: Search the whole dataset for the active sub-tab ---
+    document.getElementById('usernameSearch').addEventListener('input', function() {
+      const term = this.value.trim().toLowerCase();
+      // Find the active tab-content within the currently visible container.
+      const activeContent = document.querySelector('.tab-content.active');
+      if (activeContent && typeof activeContent.updateTable === "function") {
+        activeContent.updateTable(term);
       }
     });
   </script>
